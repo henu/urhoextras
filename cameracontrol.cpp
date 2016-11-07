@@ -66,13 +66,13 @@ void CameraControl::getFlyingMovement(Urho3D::Vector3& result) const
 
 	// Left and right
 	if ((buttons & BUTTON_LEFT) && !(buttons & BUTTON_RIGHT)) {
-		result.x_ -= Urho3D::Cos(yaw) * Urho3D::Cos(pitch);
-		result.z_ += Urho3D::Sin(yaw) * Urho3D::Cos(pitch);
+		result.x_ -= Urho3D::Cos(yaw);
+		result.z_ += Urho3D::Sin(yaw);
 		zero = false;
 	}
 	else if (!(buttons & BUTTON_LEFT) && (buttons & BUTTON_RIGHT)) {
-		result.x_ += Urho3D::Cos(yaw) * Urho3D::Cos(pitch);
-		result.z_ -= Urho3D::Sin(yaw) * Urho3D::Cos(pitch);
+		result.x_ += Urho3D::Cos(yaw);
+		result.z_ -= Urho3D::Sin(yaw);
 		zero = false;
 	}
 
