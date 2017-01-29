@@ -1,6 +1,9 @@
 #ifndef URHOEXTRAS_RANDOM_HPP
 #define URHOEXTRAS_RANDOM_HPP
 
+#include <Urho3D/Math/Vector2.h>
+#include <Urho3D/Math/Vector3.h>
+
 namespace UrhoExtras
 {
 
@@ -36,6 +39,44 @@ public:
 	inline float randomFloat()
 	{
 		return float(randomUnsigned()) / 0xffffffff;
+	}
+
+	inline float randomFloatRange(float min_inclusive, float max_inclusive)
+	{
+		return min_inclusive + randomFloat() * (max_inclusive - min_inclusive);
+	}
+
+	inline Urho3D::Vector2 randomVector2(float max_radius_inclusive)
+	{
+		if (max_radius_inclusive <= 0) {
+			return Urho3D::Vector2::ZERO;
+		}
+		while (true) {
+			Urho3D::Vector2 result(
+				randomFloatRange(-max_radius_inclusive, max_radius_inclusive),
+				randomFloatRange(-max_radius_inclusive, max_radius_inclusive)
+			);
+			if (result.Length() <= max_radius_inclusive) {
+				return result;
+			}
+		}
+	}
+
+	inline Urho3D::Vector3 randomVector3(float max_radius_inclusive)
+	{
+		if (max_radius_inclusive <= 0) {
+			return Urho3D::Vector2::ZERO;
+		}
+		while (true) {
+			Urho3D::Vector3 result(
+				randomFloatRange(-max_radius_inclusive, max_radius_inclusive),
+				randomFloatRange(-max_radius_inclusive, max_radius_inclusive),
+				randomFloatRange(-max_radius_inclusive, max_radius_inclusive)
+			);
+			if (result.Length() <= max_radius_inclusive) {
+				return result;
+			}
+		}
 	}
 
 private:
