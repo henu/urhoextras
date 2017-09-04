@@ -17,13 +17,16 @@ class Function
 
 public:
 
-	inline float get(long x, long y)
+	typedef Urho3D::PODVector<float> Value;
+
+	inline void get(Value& result, long x, long y)
 	{
 		Pos pos(x, y);
 		// First try from cache
 		Cache::ConstIterator cache_find = cache.Find(pos);
 		if (cache_find != cache.End()) {
-			return cache_find->second_;
+			result = cache_find->second_;
+			return;
 		}
 
 		// Not found from cache. Before calculating value and storing
@@ -42,9 +45,43 @@ public:
 		}
 
 		// Calculate and store to cache
-		float value = doGet(x, y);
-		cache[pos] = value;
-		return value;
+		result.Clear();
+		doGet(result, x, y);
+		cache[pos] = result;
+	}
+
+	inline float get(long x, long y)
+	{
+		Pos pos(x, y);
+		// First try from cache
+		Cache::ConstIterator cache_find = cache.Find(pos);
+		if (cache_find != cache.End()) {
+			assert(cache_find->second_.Size() == 1);
+			return cache_find->second_[0];
+		}
+
+		// Not found from cache. Before calculating value and storing
+		// it to cache, check if current cache is too big.
+		if (cache.Size() > 1000000) {
+			Cache::Iterator i = cache.Begin();
+			bool erase_next = true;
+			while (i != cache.End()) {
+				if (erase_next) {
+					i = cache.Erase(i);
+				} else {
+					++ i;
+				}
+				erase_next = !erase_next;
+			}
+		}
+
+		// Calculate and store to cache
+		Value result;
+		doGet(result, x, y);
+		assert(result.Size() == 1);
+		cache[pos] = result;
+
+		return result[0];
 	}
 
 private:
@@ -58,11 +95,12 @@ private:
 		inline unsigned ToHash() const { return x * 31l + y; }
 	};
 
-	typedef Urho3D::HashMap<Pos, float> Cache;
+	typedef Urho3D::HashMap<Pos, Value> Cache;
 
 	Cache cache;
 
-	virtual float doGet(long x, long y) = 0;
+	// Result is always cleared
+	virtual void doGet(Value& result, long x, long y) = 0;
 };
 
 }

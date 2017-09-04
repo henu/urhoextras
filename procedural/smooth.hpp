@@ -48,14 +48,22 @@ private:
 
 	Cells cells;
 
-	virtual float doGet(long x, long y)
+	virtual void doGet(Value& result, long x, long y)
 	{
-		float result = 0;
+		Value cell_value;
 		for (Cells::ConstIterator i = cells.Begin(); i != cells.End(); ++ i) {
 			Cell const& c = *i;
-			result += c.weight * func->get(x + long(c.x), y + long(c.y));
+			func->get(cell_value, x + long(c.x), y + long(c.y));
+			if (result.Empty()) {
+				for (unsigned j = 0; j < cell_value.Size(); ++ j) {
+					result.Push(c.weight * cell_value[j]);
+				}
+			} else {
+				for (unsigned j = 0; j < cell_value.Size(); ++ j) {
+					result[j] += c.weight * cell_value[j];
+				}
+			}
 		}
-		return result;
 	}
 };
 
