@@ -36,6 +36,11 @@ public:
 		return min_inclusive + randomUnsigned(max_inclusive - min_inclusive + 1);
 	}
 
+	inline bool randomBool()
+	{
+		return randomUnsigned() % 2;
+	}
+
 	inline float randomFloat()
 	{
 		return float(randomUnsigned()) / 0xffffffff;
