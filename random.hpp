@@ -15,6 +15,11 @@ public:
 	inline Random() : seed(0) {}
 	inline Random(int seed) : seed(seed) {}
 
+	inline void seedMore(int new_seed)
+	{
+		seed = seed * A + new_seed * C;
+	}
+
 	inline int randomInt()
 	{
 		seed = A * seed + C;
