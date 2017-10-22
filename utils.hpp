@@ -38,6 +38,16 @@ inline Urho3D::Quaternion getDirectionalLightRotation(Urho3D::Vector3 const& dir
 	return Urho3D::Quaternion(yaw, Urho3D::Vector3::UP) * Urho3D::Quaternion(pitch, Urho3D::Vector3::RIGHT);
 }
 
+// Returns a vector that is perpendicular to given one
+inline Urho3D::Vector3 getPerpendicular(Urho3D::Vector3 const& v)
+{
+	if (Urho3D::Abs(v.x_) < Urho3D::Abs(v.y_)) {
+		return Urho3D::Vector3(0, v.z_, -v.y_);
+	} else {
+		return Urho3D::Vector3(-v.z_, 0, v.x_);
+	}
+}
+
 }
 
 #endif
