@@ -15,6 +15,11 @@ public:
 	inline Random() : seed(0) {}
 	inline Random(int seed) : seed(seed) {}
 
+	inline void seedMore(int new_seed)
+	{
+		seed = seed * A + new_seed * C;
+	}
+
 	inline int randomInt()
 	{
 		seed = A * seed + C;
@@ -34,6 +39,11 @@ public:
 	inline int randomRange(int min_inclusive, int max_inclusive)
 	{
 		return min_inclusive + randomUnsigned(max_inclusive - min_inclusive + 1);
+	}
+
+	inline bool randomBool()
+	{
+		return randomUnsigned() % 2;
 	}
 
 	inline float randomFloat()
