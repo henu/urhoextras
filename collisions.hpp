@@ -1,6 +1,8 @@
 #ifndef URHOEXTRAS_COLLISIONS_HPP
 #define URHOEXTRAS_COLLISIONS_HPP
 
+#include "triangle.hpp"
+
 #include <Urho3D/Container/Vector.h>
 #include <Urho3D/Math/BoundingBox.h>
 #include <Urho3D/Math/Vector3.h>
@@ -60,12 +62,17 @@ public:
 	inline Urho3D::Vector3 getSecondPosition() const { return pos2; }
 	inline float getRadius() const { return radius; }
 
-	inline Urho3D::BoundingBox getBoundingBox() const
+	inline Urho3D::BoundingBox getBoundingBox(float extra_radius = 0) const
 	{
 		Urho3D::Vector3 radius3(radius, radius, radius);
 		Urho3D::BoundingBox bb(pos1 + radius3, pos1 - radius3);
 		bb.Merge(pos2 + radius3);
 		bb.Merge(pos2 - radius3);
+		if (extra_radius > 0) {
+			Urho3D::Vector3 extra_radius3 = Urho3D::Vector3::ONE * extra_radius;
+			bb.min_ -= extra_radius3;
+			bb.max_ += extra_radius3;
+		}
 		return bb;
 	}
 
@@ -77,7 +84,7 @@ public:
 		}
 	}
 
-	void getCollisionsToTriangle(Collisions& result, Urho3D::Vector3 const& pos1, Urho3D::Vector3 const& pos2, Urho3D::Vector3 const& pos3, Urho3D::BoundingBox const& bb, float extra_radius = -1, bool only_front_collisions = false) const;
+	void getCollisionsToTriangle(Collisions& result, Triangle const& tri, Urho3D::BoundingBox const& bb, float extra_radius = -1, bool only_front_collisions = false) const;
 
 private:
 

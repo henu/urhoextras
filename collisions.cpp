@@ -89,17 +89,16 @@ inline Urho3D::Vector2 transformPointToTrianglespace(Urho3D::Vector3 const& pos,
 }
 
 
-inline bool triangleHitsSphere(Urho3D::Vector3 const& pos, float radius,
-                               Urho3D::Vector3 const& tp0, Urho3D::Vector3 const& tp1, Urho3D::Vector3 const& tp2,
+inline bool triangleHitsSphere(Urho3D::Vector3 const& pos, float radius, Triangle const& tri,
                                Urho3D::Vector3& coll_pos, Urho3D::Vector3& coll_nrm, float& coll_depth)
 {
-	Urho3D::Plane plane(tp0, tp1, tp2);
+	Urho3D::Plane plane = tri.getPlane();
 
-	Urho3D::Vector3 edge0(tp1 - tp0);
-	Urho3D::Vector3 edge1(tp2 - tp1);
+	Urho3D::Vector3 edge0(tri.p2 - tri.p1);
+	Urho3D::Vector3 edge1(tri.p3 - tri.p2);
 
 	// Before collision check, do bounding sphere check.
-	Urho3D::Vector3 const& tri_bs_pos2 = tp1;
+	Urho3D::Vector3 const& tri_bs_pos2 = tri.p2;
 	float dst0 = edge0.Length();
 	float dst1 = edge1.Length();
 	float tri_bs_r2 = (dst0 > dst1) ? dst0 : dst1;
@@ -108,7 +107,7 @@ inline bool triangleHitsSphere(Urho3D::Vector3 const& pos, float radius,
 	}
 
 	// Do the collision check.
-	Urho3D::Vector3 edge2(tp0 - tp2);
+	Urho3D::Vector3 edge2(tri.p1 - tri.p3);
 	// Form normal of plane. If result is zero, then do not test against
 	// plane. Only do edge and corner tests then.
 	Urho3D::Vector3 plane_nrm = edge0.CrossProduct(-edge2);
@@ -127,7 +126,7 @@ inline bool triangleHitsSphere(Urho3D::Vector3 const& pos, float radius,
 		if (coll_depth > 0) {
 
 			// Check if the position is inside the area of triangle
-			Urho3D::Vector2 pos_at_tri = transformPointToTrianglespace(pos_at_plane - tp0, edge0, -edge2);
+			Urho3D::Vector2 pos_at_tri = transformPointToTrianglespace(pos_at_plane - tri.p1, edge0, -edge2);
 			if (pos_at_tri.x_ >= 0.0 && pos_at_tri.y_ >= 0.0 && pos_at_tri.x_ + pos_at_tri.y_ <= 1.0) {
 				coll_pos = pos_at_plane;
 				float coll_nrm_length = coll_nrm.Length();
@@ -148,23 +147,23 @@ inline bool triangleHitsSphere(Urho3D::Vector3 const& pos, float radius,
 	bool coll_found;
 
 	// Check if edges collide
-	float dp0 = tp0.DotProduct(tp0);
-	float dp1 = tp1.DotProduct(tp1);
-	float dp2 = tp2.DotProduct(tp2);
-	float dp01 = tp0.DotProduct(tp1);
-	float dp12 = tp1.DotProduct(tp2);
-	float dp20 = tp2.DotProduct(tp0);
-	float val0 = tp0.DotProduct(pos);
-	float val1 = tp1.DotProduct(pos);
-	float val2 = tp2.DotProduct(pos);
+	float dp0 = tri.p1.DotProduct(tri.p1);
+	float dp1 = tri.p2.DotProduct(tri.p2);
+	float dp2 = tri.p3.DotProduct(tri.p3);
+	float dp01 = tri.p1.DotProduct(tri.p2);
+	float dp12 = tri.p2.DotProduct(tri.p3);
+	float dp20 = tri.p3.DotProduct(tri.p1);
+	float val0 = tri.p1.DotProduct(pos);
+	float val1 = tri.p2.DotProduct(pos);
+	float val2 = tri.p3.DotProduct(pos);
 	float divider = 2*dp01-dp0-dp1;
 	if (divider != 0) {
-		Urho3D::Vector3 edge0_np = tp0 + edge0 * ((dp01-val1+val0-dp0) / divider);
+		Urho3D::Vector3 edge0_np = tri.p1 + edge0 * ((dp01-val1+val0-dp0) / divider);
 		float edge0_len = edge0.Length();
 		float edge0_dst = (edge0_np - pos).Length();
 		if (edge0_dst <= radius &&
-		    (tp0 - edge0_np).Length() <= edge0_len &&
-		    (tp1 - edge0_np).Length() <= edge0_len) {
+		    (tri.p1 - edge0_np).Length() <= edge0_len &&
+		    (tri.p2 - edge0_np).Length() <= edge0_len) {
 			coll_pos = edge0_np;
 			coll_nrm = edge0_np - pos;
 			deepest_neg_depth = coll_nrm.Length();
@@ -173,12 +172,12 @@ inline bool triangleHitsSphere(Urho3D::Vector3 const& pos, float radius,
 	} else coll_found = false;
 	divider = 2*dp12-dp1-dp2;
 	if (divider != 0) {
-		Urho3D::Vector3 edge1_np = tp1 + edge1 * ((dp12-val2+val1-dp1) / divider);
+		Urho3D::Vector3 edge1_np = tri.p2 + edge1 * ((dp12-val2+val1-dp1) / divider);
 		float edge1_len = edge1.Length();
 		float edge1_dst = (edge1_np - pos).Length();
 		if (edge1_dst <= radius &&
-		    (tp1 - edge1_np).Length() <= edge1_len &&
-		    (tp2 - edge1_np).Length() <= edge1_len) {
+		    (tri.p2 - edge1_np).Length() <= edge1_len &&
+		    (tri.p3 - edge1_np).Length() <= edge1_len) {
 			if (!coll_found) {
 				coll_pos = edge1_np;
 				coll_nrm = edge1_np - pos;
@@ -197,12 +196,12 @@ inline bool triangleHitsSphere(Urho3D::Vector3 const& pos, float radius,
 	}
 	divider = 2*dp20-dp2-dp0;
 	if (divider != 0) {
-		Urho3D::Vector3 edge2_np = tp2 + edge2 * ((dp20-val0+val2-dp2) / divider);
+		Urho3D::Vector3 edge2_np = tri.p3 + edge2 * ((dp20-val0+val2-dp2) / divider);
 		float edge2_len = edge2.Length();
 		float edge2_dst = (edge2_np - pos).Length();
 		if (edge2_dst <= radius &&
-		    (tp2 - edge2_np).Length() <= edge2_len &&
-		    (tp0 - edge2_np).Length() <= edge2_len) {
+		    (tri.p3 - edge2_np).Length() <= edge2_len &&
+		    (tri.p1 - edge2_np).Length() <= edge2_len) {
 			if (!coll_found) {
 				coll_pos = edge2_np;
 				coll_nrm = edge2_np - pos;
@@ -221,49 +220,49 @@ inline bool triangleHitsSphere(Urho3D::Vector3 const& pos, float radius,
 	}
 
 	// Check if corners hit sphere
-	if ((tp0 - pos).Length() <= radius) {
+	if ((tri.p1 - pos).Length() <= radius) {
 		if (!coll_found) {
-			coll_pos = tp0;
-			coll_nrm = tp0 - pos;
+			coll_pos = tri.p1;
+			coll_nrm = tri.p1 - pos;
 			deepest_neg_depth = coll_nrm.Length();
 			coll_found = true;
 		} else {
-			Urho3D::Vector3 test_nrm = tp0 - pos;
+			Urho3D::Vector3 test_nrm = tri.p1 - pos;
 			float test_neg_depth = test_nrm.Length();
 			if (test_neg_depth < deepest_neg_depth) {
-				coll_pos = tp0;
+				coll_pos = tri.p1;
 				coll_nrm = test_nrm;
 				deepest_neg_depth = test_neg_depth;
 			}
 		}
 	}
-	if ((tp1 - pos).Length() <= radius) {
+	if ((tri.p2 - pos).Length() <= radius) {
 		if (!coll_found) {
-			coll_pos = tp1;
-			coll_nrm = tp1 - pos;
+			coll_pos = tri.p2;
+			coll_nrm = tri.p2 - pos;
 			deepest_neg_depth = coll_nrm.Length();
 			coll_found = true;
 		} else {
-			Urho3D::Vector3 test_nrm = tp1 - pos;
+			Urho3D::Vector3 test_nrm = tri.p2 - pos;
 			float test_neg_depth = test_nrm.Length();
 			if (test_neg_depth < deepest_neg_depth) {
-				coll_pos = tp1;
+				coll_pos = tri.p2;
 				coll_nrm = test_nrm;
 				deepest_neg_depth = test_neg_depth;
 			}
 		}
 	}
-	if ((tp2 - pos).Length() <= radius) {
+	if ((tri.p3 - pos).Length() <= radius) {
 		if (!coll_found) {
-			coll_pos = tp2;
-			coll_nrm = tp2 - pos;
+			coll_pos = tri.p3;
+			coll_nrm = tri.p3 - pos;
 			deepest_neg_depth = coll_nrm.Length();
 			coll_found = true;
 		} else {
-			Urho3D::Vector3 test_nrm = tp2 - pos;
+			Urho3D::Vector3 test_nrm = tri.p3 - pos;
 			float test_neg_depth = test_nrm.Length();
 			if (test_neg_depth < deepest_neg_depth) {
-				coll_pos = tp2;
+				coll_pos = tri.p3;
 				coll_nrm = test_nrm;
 				deepest_neg_depth = test_neg_depth;
 			}
@@ -281,7 +280,7 @@ inline bool triangleHitsSphere(Urho3D::Vector3 const& pos, float radius,
 
 inline void sphereToTriangle(Collisions& result,
                              Urho3D::Vector3 const& pos, float radius,
-                             Urho3D::Vector3 const& corner0, Urho3D::Vector3 const& corner1, Urho3D::Vector3 const& corner2,
+                             Triangle const& tri,
                              float extra_radius, bool only_front_collisions)
 {
 	if (extra_radius < 0) {
@@ -290,16 +289,14 @@ inline void sphereToTriangle(Collisions& result,
 
 	Urho3D::Vector3 coll_pos;
 	Collision coll;
-	if (!triangleHitsSphere(pos, radius + extra_radius,
-	                        corner0, corner1, corner2,
-	                        coll_pos, coll.normal, coll.depth)) {
+	if (!triangleHitsSphere(pos, radius + extra_radius, tri, coll_pos, coll.normal, coll.depth)) {
 		return;
 	}
 	assert(coll.normal.Length() > 0.99 && coll.normal.Length() < 1.01);
 
 	// If facing wrong way
 	if (only_front_collisions) {
-		Urho3D::Plane plane(corner0, corner1, corner2);
+		Urho3D::Plane plane = tri.getPlane();
 		if (plane.normal_.DotProduct(coll.normal) < 0) {
 			return;
 		}
@@ -311,8 +308,7 @@ inline void sphereToTriangle(Collisions& result,
 
 inline void capsuleToTriangle(Collisions& result,
                               Urho3D::Vector3 const& pos0, Urho3D::Vector3 const& pos1, float radius,
-                              Urho3D::Vector3 const& corner0, Urho3D::Vector3 const& corner1, Urho3D::Vector3 const& corner2,
-                              float extra_radius, bool only_front_collisions)
+                              Triangle const& tri, float extra_radius, bool only_front_collisions)
 {
 	if (extra_radius < 0) {
 		extra_radius = radius;
@@ -320,7 +316,7 @@ inline void capsuleToTriangle(Collisions& result,
 
 	Urho3D::Vector3 const diff = pos1 - pos0;
 
-	Urho3D::Plane plane(corner0, corner1, corner2);
+	Urho3D::Plane plane = tri.getPlane();
 
 	// This is kind of hard shape, so go different kind of
 	// collision types through and pick all collisions to
@@ -329,14 +325,14 @@ inline void capsuleToTriangle(Collisions& result,
 	ccolls.Reserve(14);
 
 	// Test first capsule cap
-	sphereToTriangle(ccolls, pos0, radius, corner0, corner1, corner2, extra_radius, only_front_collisions);
+	sphereToTriangle(ccolls, pos0, radius, tri, extra_radius, only_front_collisions);
 
 	// Test second capsule cap
-	sphereToTriangle(ccolls, pos1, radius, corner0, corner1, corner2, extra_radius, only_front_collisions);
+	sphereToTriangle(ccolls, pos1, radius, tri, extra_radius, only_front_collisions);
 
 	// Now check middle cylinder. Start from corners
 	for (unsigned corner_i = 0; corner_i < 3; ++ corner_i) {
-		Urho3D::Vector3 corner = (corner_i == 0) ? corner0 : ((corner_i == 1) ? corner1 : corner2);
+		Urho3D::Vector3 corner = tri.getCorner(corner_i);
 
 		// Discard this corner, if its above or below cylinder
 		if (diff.DotProduct(corner - pos0) < 0 ||
@@ -370,8 +366,8 @@ inline void capsuleToTriangle(Collisions& result,
 
 	// Then check if edges are inside cylinder
 	for (unsigned edge_i = 0; edge_i < 3; ++ edge_i) {
-		Urho3D::Vector3 begin = (edge_i == 0) ? corner0 : ((edge_i == 1) ? corner1 : corner2);
-		Urho3D::Vector3 end = (edge_i == 0) ? corner1 : ((edge_i == 1) ? corner2 : corner0);
+		Urho3D::Vector3 begin = tri.getCorner(edge_i);
+		Urho3D::Vector3 end = tri.getCorner((edge_i + 1) % 3);
 		Urho3D::Vector3 edge = end - begin;
 
 		// Is begin and end of edge inside or outside?
@@ -635,14 +631,14 @@ Urho3D::Vector3 moveOutFromCollisions(Collisions& colls)
 	return result;
 }
 
-void CollisionShape::getCollisionsToTriangle(Collisions& result, Urho3D::Vector3 const& pos1, Urho3D::Vector3 const& pos2, Urho3D::Vector3 const& pos3, Urho3D::BoundingBox const& bb, float extra_radius, bool only_front_collisions) const
+void CollisionShape::getCollisionsToTriangle(Collisions& result, Triangle const& tri, Urho3D::BoundingBox const& bb, float extra_radius, bool only_front_collisions) const
 {
 // TODO: Use BoundingBox!
 (void)bb;
 	if (type == SPHERE) {
-		sphereToTriangle(result, this->pos1, radius, pos1, pos2, pos3, extra_radius, only_front_collisions);
+		sphereToTriangle(result, pos1, radius, tri, extra_radius, only_front_collisions);
 	} else {
-		capsuleToTriangle(result, this->pos1, this->pos2, radius, pos1, pos2, pos3, extra_radius, only_front_collisions);
+		capsuleToTriangle(result, pos1, pos2, radius, tri, extra_radius, only_front_collisions);
 	}
 }
 
