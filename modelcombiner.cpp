@@ -57,9 +57,12 @@ bool ModelCombiner::AddModel(Urho3D::Model const* model, Urho3D::Vector<Urho3D::
 		qitem->mat = mat;
 		qitem->transf = transf;
 
-		Urho3D::MutexLock queue_lock(queue_mutex);
-		(void)queue_lock;
-		queue.Push(qitem);
+		{
+			Urho3D::MutexLock queue_lock(queue_mutex);
+			(void)queue_lock;
+			queue.Push(qitem);
+			qitem = NULL;
+		}
 
 		MakeSureTaskIsRunning();
 	}
@@ -78,12 +81,15 @@ bool ModelCombiner::Ready()
 	no_more_input_coming = true;
 
 	// Check if there is still unprocessed stuff in queue
-	Urho3D::MutexLock lock(queue_mutex);
-	if (!queue.Empty()) {
-		// There is still stuff to process, make
-		// sure task is running and try again later.
-		MakeSureTaskIsRunning();
-		return false;
+	{
+		Urho3D::MutexLock queue_lock(queue_mutex);
+		(void)queue_lock;
+		if (!queue.Empty()) {
+			// There is still stuff to process, make
+			// sure task is running and try again later.
+			MakeSureTaskIsRunning();
+			return false;
+		}
 	}
 	// Queue is empty, but worker unit needs to be waited too.
 	if (worker_wi && !worker_wi->completed_) {
