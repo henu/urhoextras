@@ -19,8 +19,12 @@ finalized(false)
 ModelCombiner::~ModelCombiner()
 {
 	give_up = true;
-	while (worker_wi.NotNull() && !worker_wi->completed_) {
-		Urho3D::Time::Sleep(5);
+	if (worker_wi.NotNull()) {
+		Urho3D::WorkQueue* workqueue = GetSubsystem<Urho3D::WorkQueue>();
+		if (!workqueue->RemoveWorkItem(worker_wi)) {
+			while (!worker_wi->completed_) {
+			}
+		}
 	}
 }
 
