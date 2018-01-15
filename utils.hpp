@@ -6,6 +6,9 @@
 #include <Urho3D/Math/Vector2.h>
 #include <Urho3D/Math/Vector3.h>
 
+#include <fstream>
+#include <stdexcept>
+
 namespace UrhoExtras
 {
 
@@ -46,6 +49,17 @@ inline Urho3D::Vector3 getPerpendicular(Urho3D::Vector3 const& v)
 	} else {
 		return Urho3D::Vector3(-v.z_, 0, v.x_);
 	}
+}
+
+inline unsigned secureRand()
+{
+	char buf[4];
+	std::ifstream file("/dev/urandom");
+	if (!file.is_open()) {
+		throw std::runtime_error("Unable to open RNG!");
+	}
+	file.read(buf, 4);
+	return *(unsigned*)buf;
 }
 
 }
