@@ -53,13 +53,13 @@ inline Urho3D::Vector3 getPerpendicular(Urho3D::Vector3 const& v)
 
 inline unsigned secureRand()
 {
-	char buf[4];
+	unsigned result;
 	std::ifstream file("/dev/urandom");
 	if (!file.is_open()) {
 		throw std::runtime_error("Unable to open RNG!");
 	}
-	file.read(buf, 4);
-	return *(unsigned*)buf;
+	file.read((char*)&result, 4);
+	return result;
 }
 
 }
