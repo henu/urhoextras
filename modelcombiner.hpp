@@ -22,29 +22,39 @@ public:
 	ModelCombiner(Urho3D::Context* context);
 	virtual ~ModelCombiner();
 
-	inline void AddModel(Urho3D::Model const* model, Urho3D::Material* mat, Urho3D::Vector3 const& pos, Urho3D::Quaternion const& rot)
+	inline bool AddModel(Urho3D::Model const* model, Urho3D::Material* mat, Urho3D::Vector3 const& pos, Urho3D::Quaternion const& rot)
 	{
 		Urho3D::Matrix4 transf;
 		transf.SetTranslation(pos);
 		transf.SetRotation(rot.RotationMatrix());
-		AddModel(model, mat, transf);
+		return AddModel(model, mat, transf);
 	}
 
-	inline void AddModel(Urho3D::Model const* model, Urho3D::Material* mat, Urho3D::Matrix4 const& transf)
+	inline bool AddModel(Urho3D::Model const* model, Urho3D::Material* mat, Urho3D::Matrix4 const& transf)
 	{
 		Urho3D::Vector<Urho3D::Material*> mats;
 		mats.Reserve(model->GetNumGeometries());
 		for (unsigned i = 0; i < model->GetNumGeometries(); ++ i) {
 			mats.Push(mat);
 		}
-		AddModel(model, mats, transf);
+		return AddModel(model, mats, transf);
 	}
 
 	bool AddModel(Urho3D::Model const* model, Urho3D::Vector<Urho3D::Material*> const& mats, Urho3D::Matrix4 const& transf);
 
+	// Functions to add Triangle
+	bool StartAddingTriangle(Urho3D::PODVector<Urho3D::VertexElement> const& elems, Urho3D::Material* mat);
+	inline bool AddTriangleData(float f) { return AddTriangleData((unsigned char const*)&f, sizeof(float)); }
+	inline bool AddTriangleData(Urho3D::Vector2 const& v) { return AddTriangleData((unsigned char const*)v.Data(), sizeof(float) * 2); }
+	inline bool AddTriangleData(Urho3D::Vector3 const& v) { return AddTriangleData((unsigned char const*)v.Data(), sizeof(float) * 3); }
+	bool AddTriangleData(unsigned char const* buf, unsigned buf_size);
+
 	// Check if combining is ready. This should
 	// be called repeatedly until it returns true.
 	bool Ready();
+
+	// Blocks until ready.
+	void FinalizeNow();
 
 	Urho3D::Model* GetModel();
 	Urho3D::Material* GetMaterial(unsigned geom_i);
@@ -68,9 +78,9 @@ private:
 	struct QueueItem : Urho3D::RefCounted
 	{
 		unsigned vrt_size;
-		Urho3D::PODVector<unsigned char> vbuf;
+		ByteBuf vbuf;
 		unsigned idx_size;
-		Urho3D::PODVector<unsigned char> ibuf;
+		ByteBuf ibuf;
 		Urho3D::PODVector<Urho3D::VertexElement> elems;
 		Urho3D::PrimitiveType primitive_type;
 		Urho3D::Material* mat;
@@ -85,6 +95,12 @@ private:
 
 	RawVBufs raw_vbufs;
 	Urho3D::BoundingBox bb;
+
+	// Triangle adding state
+	Urho3D::PODVector<Urho3D::VertexElement> tri_add_elems;
+	Urho3D::Material* tri_add_mat;
+	ByteBuf tri_add_buf;
+	unsigned tri_add_vrt_size;
 
 	// State of process
 	volatile bool no_more_input_coming;

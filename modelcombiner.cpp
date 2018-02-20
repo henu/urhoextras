@@ -10,6 +10,8 @@ namespace UrhoExtras
 
 ModelCombiner::ModelCombiner(Urho3D::Context* context) :
 Urho3D::Object(context),
+tri_add_mat(NULL),
+tri_add_vrt_size(0),
 no_more_input_coming(false),
 give_up(false),
 finalized(false)
@@ -70,11 +72,77 @@ bool ModelCombiner::AddModel(Urho3D::Model const* model, Urho3D::Vector<Urho3D::
 	return true;
 }
 
+bool ModelCombiner::StartAddingTriangle(Urho3D::PODVector<Urho3D::VertexElement> const& elems, Urho3D::Material* mat)
+{
+	if (elems.Empty()) {
+		URHO3D_LOGERROR("No elements!");
+		return false;
+	}
+	if (tri_add_vrt_size) {
+		URHO3D_LOGERROR("Unable to start adding new triangle because previous one is still incomplete!");
+		return false;
+	}
+
+	tri_add_elems = elems;
+	tri_add_mat = mat;
+	tri_add_vrt_size = Urho3D::VertexBuffer::GetVertexSize(elems);
+	assert(tri_add_buf.Empty());
+
+	return true;
+}
+
+bool ModelCombiner::AddTriangleData(unsigned char const* buf, unsigned buf_size)
+{
+	if (tri_add_vrt_size == 0) {
+		URHO3D_LOGERROR("No triange adding started! Maybe previous triangle adding already got enough data?");
+		return false;
+	}
+	tri_add_buf.Insert(tri_add_buf.End(), buf, buf + buf_size);
+	// If too much data was got
+	if (tri_add_buf.Size() > tri_add_vrt_size * 3) {
+		URHO3D_LOGERROR("Too much data to when adding a triangle!");
+		return false;
+	}
+	// If all data was got
+	if (tri_add_buf.Size() == tri_add_vrt_size * 3) {
+		// Convert triangle data to QueueItem.
+		Urho3D::SharedPtr<QueueItem> qitem(new QueueItem);
+		qitem->vrt_size = tri_add_vrt_size;
+		qitem->vbuf.Swap(tri_add_buf);
+		qitem->ibuf.Reserve(2*3);
+		qitem->ibuf.Push(0); qitem->ibuf.Push(0);
+		qitem->ibuf.Push(1); qitem->ibuf.Push(0);
+		qitem->ibuf.Push(2); qitem->ibuf.Push(0);
+		qitem->idx_size = 2;
+		qitem->elems = tri_add_elems;
+		qitem->primitive_type = Urho3D::TRIANGLE_LIST;
+		qitem->mat = tri_add_mat;
+
+		{
+			Urho3D::MutexLock queue_lock(queue_mutex);
+			(void)queue_lock;
+			queue.Push(qitem);
+			qitem = NULL;
+		}
+
+		MakeSureTaskIsRunning();
+
+		tri_add_vrt_size = 0;
+		assert(tri_add_buf.Empty());
+	}
+	return true;
+}
+
 bool ModelCombiner::Ready()
 {
 	// If already finalized
 	if (finalized) {
-	    return true;
+		return true;
+	}
+
+	if (tri_add_vrt_size) {
+		URHO3D_LOGERROR("Unable to finalize because there is an incomplete triangle adding!");
+		return false;
 	}
 
 	// Mark that no other input is coming
@@ -192,11 +260,11 @@ bool ModelCombiner::Ready()
 	}
 	if (!model->SetIndexBuffers(ibufs)) {
 		URHO3D_LOGERROR("Unable to set indexbuffers of model!");
-	    return false;
+		return false;
 	}
 	if (!model->SetVertexBuffers(vbufs, Urho3D::PODVector<unsigned>(), Urho3D::PODVector<unsigned>())) {
 		URHO3D_LOGERROR("Unable to set vertexbuffers of model!");
-	    return false;
+		return false;
 	}
 	model->SetNumGeometries(geoms.Size());
 	for (unsigned geom_i = 0; geom_i < geoms.Size(); ++ geom_i) {
@@ -213,6 +281,13 @@ bool ModelCombiner::Ready()
 	finalized = true;
 
 	return true;
+}
+
+void ModelCombiner::FinalizeNow()
+{
+// TODO: Ask thread to stop and finalize in this thread!
+while (!Ready()) {
+}
 }
 
 Urho3D::Model* ModelCombiner::GetModel()
