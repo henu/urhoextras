@@ -94,7 +94,7 @@ bool ModelCombiner::StartAddingTriangle(Urho3D::PODVector<Urho3D::VertexElement>
 bool ModelCombiner::AddTriangleData(unsigned char const* buf, unsigned buf_size)
 {
 	if (tri_add_vrt_size == 0) {
-		URHO3D_LOGERROR("No triange adding started! Maybe previous triangle adding already got enough data?");
+		URHO3D_LOGERROR("No triangle adding started! Maybe previous triangle adding already got enough data?");
 		return false;
 	}
 	tri_add_buf.Insert(tri_add_buf.End(), buf, buf + buf_size);
