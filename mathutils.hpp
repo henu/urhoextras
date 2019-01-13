@@ -2,7 +2,9 @@
 #define URHOEXTRAS_MATHUTILS_HPP
 
 #include <Urho3D/Math/Vector2.h>
+#include <Urho3D/Math/Vector3.h>
 #include <Urho3D/Math/Matrix2.h>
+#include <cassert>
 
 namespace UrhoExtras
 {
@@ -45,6 +47,10 @@ inline float distanceBetweenLines(Urho3D::Vector3 const& begin1, Urho3D::Vector3
                                   Urho3D::Vector3 const& begin2, Urho3D::Vector3 const& dir2,
                                   Urho3D::Vector3* nearest_point1, Urho3D::Vector3* nearest_point2);
 
+// Project vector to another, by using a shearing method.
+// This means vector "v" will never go smaller, but will
+// either grow or stay the same length.
+inline Urho3D::Vector3 shearVectorToAnother(Urho3D::Vector3 const& v, Urho3D::Vector3 const& another);
 
 inline float distanceTo2DPlane(Urho3D::Vector2 const& point, Urho3D::Vector2 const& plane_pos, Urho3D::Vector2 const& plane_normal)
 {
@@ -169,6 +175,14 @@ inline float distanceBetweenLines(Urho3D::Vector3 const& begin1, Urho3D::Vector3
 	float cp_d1_d2_len = ::sqrt(cp_d1_d2_len_to_2);
 	Urho3D::Vector3 n = cp_d1_d2 / cp_d1_d2_len;
 	return ::fabs(n.DotProduct(begin_diff));
+}
+
+inline Urho3D::Vector3 shearVectorToAnother(Urho3D::Vector3 const& v, Urho3D::Vector3 const& another)
+{
+	float dp_v_a = v.DotProduct(another);
+	assert(fabs(dp_v_a) > 0.000001);
+	float m = v.DotProduct(v) / dp_v_a;
+	return another * m;
 }
 
 }
