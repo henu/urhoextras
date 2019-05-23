@@ -414,7 +414,7 @@ int ModelCombiner::GetOrCreateVertexIndex(RawVBuf* raw_vbuf, unsigned char const
 				Urho3D::Vector4 v2((float*)ptr2);
 				Urho3D::Vector4 diff = v1 - v2;
 				float len = sqrt(diff.x_*diff.x_ + diff.y_*diff.y_ + diff.z_*diff.z_ + diff.w_*diff.w_);
-				if (len > Urho3D::M_EPSILON)
+				if (len > Urho3D::M_EPSILON) all_match = false;
 				break;
 			}
 			default:

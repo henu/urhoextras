@@ -2,6 +2,7 @@
 #define URHOEXTRAS_CAMERACONTROL_HPP
 
 #include <Urho3D/Core/Object.h>
+#include <Urho3D/Input/InputConstants.h>
 #include <Urho3D/Math/Quaternion.h>
 #include <Urho3D/Math/Vector3.h>
 
@@ -32,12 +33,12 @@ public:
 
 private:
 
-	int key_forward;
-	int key_backward;
-	int key_left;
-	int key_right;
-	int key_jump;
-	int key_crouch;
+	Urho3D::Key key_forward;
+	Urho3D::Key key_backward;
+	Urho3D::Key key_left;
+	Urho3D::Key key_right;
+	Urho3D::Key key_jump;
+	Urho3D::Key key_crouch;
 
 	float yaw_sensitivity, pitch_sensitivity;
 
