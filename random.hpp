@@ -75,7 +75,7 @@ public:
 	inline Urho3D::Vector3 randomVector3(float max_radius_inclusive)
 	{
 		if (max_radius_inclusive <= 0) {
-			return Urho3D::Vector2::ZERO;
+			return Urho3D::Vector3::ZERO;
 		}
 		while (true) {
 			Urho3D::Vector3 result(
