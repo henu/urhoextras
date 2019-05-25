@@ -25,6 +25,9 @@ public:
 
 	CameraControl(Urho3D::Context* context);
 
+	inline void setPitch(float pitch) { this->pitch = pitch; }
+	inline void setYaw(float yaw) { this->yaw = yaw; }
+
 	void update();
 
 	void getRotation(Urho3D::Quaternion& result) const;
