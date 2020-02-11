@@ -1,9 +1,10 @@
 #ifndef URHOEXTRAS_MATHUTILS_HPP
 #define URHOEXTRAS_MATHUTILS_HPP
 
+#include <Urho3D/Math/Plane.h>
+#include <Urho3D/Math/Matrix2.h>
 #include <Urho3D/Math/Vector2.h>
 #include <Urho3D/Math/Vector3.h>
-#include <Urho3D/Math/Matrix2.h>
 #include <cassert>
 
 namespace UrhoExtras
