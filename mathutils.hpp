@@ -1,6 +1,7 @@
 #ifndef URHOEXTRAS_MATHUTILS_HPP
 #define URHOEXTRAS_MATHUTILS_HPP
 
+#include <Urho3D/IO/Log.h>
 #include <Urho3D/Math/Plane.h>
 #include <Urho3D/Math/Matrix2.h>
 #include <Urho3D/Math/Vector2.h>
@@ -31,6 +32,9 @@ inline float getAngle(Urho3D::Vector2 const& v);
 
 // Returns a vector that is perpendicular to given one
 inline Urho3D::Vector3 getPerpendicular(Urho3D::Vector3 const& v);
+
+// Forces angle between vectors to be 90°.
+inline void forceVectorsPerpendicular(Urho3D::Vector3& v1, Urho3D::Vector3& v2);
 
 // Calculates nearest point between line/ray and a point. It is possible to get
 // the nearest point in two ways and it is possible to get the distance between
@@ -118,6 +122,41 @@ inline Urho3D::Vector3 getPerpendicular(Urho3D::Vector3 const& v)
 		return Urho3D::Vector3(0, v.z_, -v.y_);
 	} else {
 		return Urho3D::Vector3(-v.z_, 0, v.x_);
+	}
+}
+
+inline void forceVectorsPerpendicular(Urho3D::Vector3& v1, Urho3D::Vector3& v2)
+{
+	Urho3D::Vector3 center = (v1 + v2) / 2.0;
+	Urho3D::Vector3 to_v1 = v1 - center;
+	Urho3D::Vector3 to_v2 = v2 - center;
+	float dp_tov1_tov2 = to_v1.DotProduct(to_v2);
+	float dp_tov1_c = to_v1.DotProduct(center);
+	float dp_tov2_c = to_v2.DotProduct(center);
+	float dp_c_c = center.DotProduct(center);
+	float a = dp_tov1_tov2;
+	float b = dp_tov1_c + dp_tov2_c;
+	float c = dp_c_c;
+	if (fabs(a) < Urho3D::M_EPSILON) {
+		URHO3D_LOGERRORF("Unable to force vectors (%s) and (%s) perpendicular! Reason: Division by zero.", v1.ToString().CString(), v2.ToString().CString());
+	}
+	float d = b*b - 4*a*c;
+	if (d < 0) {
+		URHO3D_LOGERRORF("Unable to force vectors (%s) and (%s) perpendicular! Reason: Cannot take square from negative number.", v1.ToString().CString(), v2.ToString().CString());
+	}
+	float sqrt_result = sqrt(d);
+	float m1 = (-b + sqrt_result) / (2.0 * a);
+	float m2 = (-b - sqrt_result) / (2.0 * a);
+	if (m1 > 0.0) {
+		v1 = center + m1 * to_v1;
+		v2 = center + m1 * to_v2;
+	} else {
+		if (m2 <= 0.0) {
+			URHO3D_LOGERRORF("Unable to force vectors (%s) and (%s) perpendicular! Reason: Impossible situation.", v1.ToString().CString(), v2.ToString().CString());
+			return;
+		}
+		v1 = center + m2 * to_v1;
+		v2 = center + m2 * to_v2;
 	}
 }
 
