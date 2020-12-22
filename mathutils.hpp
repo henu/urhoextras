@@ -30,6 +30,14 @@ inline Urho3D::Vector2 transformPointToTrianglespace(Urho3D::Vector3 const& pos,
 inline float getAngle(float x, float y);
 inline float getAngle(Urho3D::Vector2 const& v);
 
+// (0, 1, 0) = pitch -90 deg
+// (0, -1, 0) = pitch 90 deg
+// (0, 0, 1) = pitch 0 deg, yaw 0 deg,
+// (1, 0, 0) = pitch 0 deg, yaw 90 deg,
+// (0, 0, -1) = pitch 0 deg, yaw 180 deg,
+// (-1, 0, 0) = pitch 0 deg, yaw -90 deg,
+inline void getPitchAndYaw(float& result_pitch, float& result_yaw, Urho3D::Vector3 const& v);
+
 // Returns a vector that is perpendicular to given one
 inline Urho3D::Vector3 getPerpendicular(Urho3D::Vector3 const& v);
 
@@ -114,6 +122,13 @@ inline float getAngle(float x, float y)
 inline float getAngle(Urho3D::Vector2 const& v)
 {
 	return getAngle(v.x_, v.y_);
+}
+
+inline void getPitchAndYaw(float& result_pitch, float& result_yaw, Urho3D::Vector3 const& v)
+{
+    Urho3D::Vector2 v_xz(v.x_, v.z_);
+    result_pitch = getAngle(-v.y_,  v_xz.Length());
+    result_yaw = getAngle(v_xz);
 }
 
 inline Urho3D::Vector3 getPerpendicular(Urho3D::Vector3 const& v)
