@@ -4,9 +4,11 @@
 #include <Urho3D/Graphics/Material.h>
 #include <Urho3D/Graphics/Technique.h>
 #include <Urho3D/Graphics/Texture2D.h>
-#include <Urho3D/Scene/Node.h>
+#include <Urho3D/IO/Compression.h>
+#include <Urho3D/IO/MemoryBuffer.h>
 #include <Urho3D/Resource/Image.h>
 #include <Urho3D/Resource/ResourceCache.h>
+#include <Urho3D/Scene/Node.h>
 
 #include <vector>
 
@@ -87,6 +89,74 @@ void TerrainGrid::generateFlatland(Urho3D::IntVector2 const& size)
     buildFromBuffers();
 }
 
+
+void TerrainGrid::generateFromImages(Urho3D::Image* terrainweight, Urho3D::Image* heightmap, unsigned heightmap_blur)
+{
+    if (heightmap->GetWidth() < int(heightmap_width) || (heightmap->GetWidth() - 1) % (heightmap_width - 1) != 0) {
+        throw std::runtime_error("Invalid heightmap width!");
+    }
+    if (heightmap->GetHeight() < int(heightmap_width) || (heightmap->GetHeight() - 1) % (heightmap_width - 1) != 0) {
+        throw std::runtime_error("Invalid heightmap height!");
+    }
+
+    grid_size.x_ = (heightmap->GetWidth() - 1) / (heightmap_width - 1);
+    grid_size.y_ = (heightmap->GetHeight() - 1) / (heightmap_width - 1);
+
+    if (terrainweight->GetWidth() != grid_size.x_ * int(textureweight_width)) {
+        throw std::runtime_error("Invalid terrainweight width!");
+    }
+    if (terrainweight->GetHeight() != grid_size.y_ * int(textureweight_width)) {
+        throw std::runtime_error("Invalid terrainweight height!");
+    }
+
+    // Prepare buffers
+    Urho3D::IntVector2 heightmap_size = getHeightmapSize();
+    Urho3D::IntVector2 textureweights_size = getTextureweightsSize();
+    this->heightmap.Reserve(heightmap_size.x_ * heightmap_size.y_);
+    textureweights.Reserve(textureweights_size.x_ * textureweights_size.y_ * texs.Size());
+
+    for (int y = 0; y < heightmap->GetHeight(); ++ y) {
+        for (int x = 0; x < heightmap->GetWidth(); ++ x) {
+            float height_f = 0;
+            unsigned samples = 0;
+            for (int blur_y = -heightmap_blur; blur_y <= int(heightmap_blur); ++ blur_y) {
+                if (y + blur_y < 0 || y + blur_y >= heightmap->GetHeight()) {
+                    continue;
+                }
+                for (int blur_x = -heightmap_blur; blur_x <= int(heightmap_blur); ++ blur_x) {
+                    if (x + blur_x < 0 || x + blur_x >= heightmap->GetWidth()) {
+                        continue;
+                    }
+                    Urho3D::Color color = heightmap->GetPixel(x + blur_x, y + blur_y);
+                    height_f += color.r_ + color.g_ + color.b_;
+                    samples += 3;
+                }
+            }
+            height_f /= samples;
+            uint16_t height = Urho3D::Clamp<int>(0xffff * height_f, 0, 0xffff);
+            this->heightmap.Push(height);
+        }
+    }
+
+    // Choose first texture
+    for (int y = 0; y < terrainweight->GetHeight(); ++ y) {
+        for (int x = 0; x < terrainweight->GetWidth(); ++ x) {
+            unsigned color = terrainweight->GetPixelInt(x, y);
+            textureweights.Push(color & 0xff);
+            textureweights.Push((color >> 8) & 0xff);
+            textureweights.Push((color >> 16) & 0xff);
+        }
+    }
+
+    buildFromBuffers();
+}
+
+void TerrainGrid::forgetSourceData()
+{
+    heightmap.Clear();
+    textureweights.Clear();
+}
+
 float TerrainGrid::getHeight(Urho3D::Vector3 const& world_pos) const
 {
     Urho3D::Terrain* terrain = getChunkAt(world_pos.x_, world_pos.z_);
@@ -105,9 +175,67 @@ Urho3D::Vector3 TerrainGrid::getNormal(Urho3D::Vector3 const& world_pos) const
     return Urho3D::Vector3::UP;
 }
 
-void TerrainGrid::registerObject(Urho3D::Context* context)
+bool TerrainGrid::Load(Urho3D::Deserializer& source)
 {
-    context->RegisterFactory<TerrainGrid>();
+    unsigned buf_size = source.ReadUInt();
+
+    Urho3D::PODVector<unsigned char> buf_v;
+    buf_v.Resize(buf_size);
+    Urho3D::MemoryBuffer buf(buf_v);
+
+    if (!DecompressStream(buf, source)) {
+        return false;
+    }
+    buf.Seek(0);
+
+    // Grid size
+    grid_size = buf.ReadIntVector2();
+
+    // Heightmap
+    Urho3D::IntVector2 heightmap_size = getHeightmapSize();
+    heightmap.Resize(heightmap_size.x_ * heightmap_size.y_);
+    for (unsigned i = 0; i < heightmap.Size(); ++ i) {
+        heightmap[i] = buf.ReadUShort();
+    }
+
+    // Textureweights
+    Urho3D::IntVector2 textureweights_size = getTextureweightsSize();
+    textureweights.Resize(textureweights_size.x_ * textureweights_size.y_ * texs.Size());
+    for (unsigned i = 0; i < textureweights.Size(); ++ i) {
+        textureweights[i] = buf.ReadUByte();
+    }
+
+    return true;
+}
+
+bool TerrainGrid::Save(Urho3D::Serializer& dest) const
+{
+    Urho3D::PODVector<unsigned char> buf_v;
+    unsigned buf_size =
+        8 +
+        heightmap.Size() * 2 +
+        textureweights.Size();
+    buf_v.Resize(buf_size);
+    Urho3D::MemoryBuffer buf(buf_v);
+// TODO: Write size topions, etc. and also textures somehow!
+
+    // Grid size
+    buf.WriteIntVector2(grid_size);
+
+    // Heightmap
+    for (unsigned i = 0; i < heightmap.Size(); ++ i) {
+        buf.WriteUShort(heightmap[i]);
+    }
+
+    // Textureweights
+    for (unsigned i = 0; i < textureweights.Size(); ++ i) {
+        buf.WriteUByte(textureweights[i]);
+    }
+
+    // Write original data length and compress the data
+    dest.WriteUInt(buf_size);
+    buf.Seek(0);
+    return Urho3D::CompressStream(dest, buf);
 }
 
 void TerrainGrid::buildFromBuffers()
@@ -208,6 +336,11 @@ void TerrainGrid::buildFromBuffers()
             }
         }
     }
+}
+
+void TerrainGrid::registerObject(Urho3D::Context* context)
+{
+    context->RegisterFactory<TerrainGrid>();
 }
 
 Urho3D::Terrain* TerrainGrid::getChunkAt(float x, float z) const

@@ -30,9 +30,18 @@ public:
 
     void generateFlatland(Urho3D::IntVector2 const& size);
 
+    void generateFromImages(Urho3D::Image* terrainweight, Urho3D::Image* heightmap, unsigned heightmap_blur = 0);
+
+    void forgetSourceData();
+
     float getHeight(Urho3D::Vector3 const& world_pos) const;
 
     Urho3D::Vector3 getNormal(Urho3D::Vector3 const& world_pos) const;
+
+    bool Load(Urho3D::Deserializer& source) override;
+    bool Save(Urho3D::Serializer& dest) const override;
+
+    void buildFromBuffers();
 
     static void registerObject(Urho3D::Context* context);
 
@@ -61,8 +70,6 @@ private:
     WeightData textureweights;
 
     Chunks chunks;
-
-    void buildFromBuffers();
 
     Urho3D::Terrain* getChunkAt(float x, float z) const;
 };
