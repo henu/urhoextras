@@ -65,6 +65,8 @@ inline float distanceBetweenLines(Urho3D::Vector3 const& begin1, Urho3D::Vector3
 // either grow or stay the same length.
 inline Urho3D::Vector3 shearVectorToAnother(Urho3D::Vector3 const& v, Urho3D::Vector3 const& another);
 
+inline Urho3D::Vector3 projectToPlaneWithDirection(Urho3D::Vector3 const& pos, Urho3D::Plane const& plane, Urho3D::Vector3 const& projection_dir);
+
 inline float distanceTo2DPlane(Urho3D::Vector2 const& point, Urho3D::Vector2 const& plane_pos, Urho3D::Vector2 const& plane_normal)
 {
 	float dp_nn = plane_normal.DotProduct(plane_normal);
@@ -238,6 +240,14 @@ inline Urho3D::Vector3 shearVectorToAnother(Urho3D::Vector3 const& v, Urho3D::Ve
 	assert(fabs(dp_v_a) > 0.000001);
 	float m = v.DotProduct(v) / dp_v_a;
 	return another * m;
+}
+
+inline Urho3D::Vector3 projectToPlaneWithDirection(Urho3D::Vector3 const& pos, Urho3D::Plane const& plane, Urho3D::Vector3 const& projection_dir)
+{
+	float dp_n_d = plane.normal_.DotProduct(projection_dir);
+	assert(dp_n_d != 0);
+	float m = (plane.normal_.DotProduct(plane.normal_) * plane.d_ - pos.DotProduct(plane.normal_)) / dp_n_d;
+	return pos + projection_dir * m;
 }
 
 }
