@@ -4,6 +4,7 @@
 #include <Urho3D/Graphics/Material.h>
 #include <Urho3D/Graphics/Technique.h>
 #include <Urho3D/Graphics/Texture2D.h>
+#include <Urho3D/Graphics/TerrainPatch.h>
 #include <Urho3D/IO/Compression.h>
 #include <Urho3D/IO/MemoryBuffer.h>
 #include <Urho3D/Resource/Image.h>
@@ -26,7 +27,8 @@ TerrainGrid::TerrainGrid(Urho3D::Context* context) :
     heightmap_square_width(0.5),
     heightmap_step(1),
     texture_repeats(32),
-    textureweight_width(1024)
+    textureweight_width(1024),
+    viewmask(Urho3D::DEFAULT_VIEWMASK)
 {
 }
 
@@ -46,12 +48,20 @@ void TerrainGrid::addTexture(Urho3D::Image* tex_img)
     addTexture(tex);
 }
 
+void TerrainGrid::setViewmask(unsigned viewmask)
+{
+    this->viewmask = viewmask;
+    for (Urho3D::Terrain* chunk : chunks) {
+        chunk->SetViewMask(viewmask);
+    }
+}
+
 Urho3D::Vector3 TerrainGrid::getSize() const
 {
     return Urho3D::Vector3(
-        grid_size.x_ * (heightmap_width - 1) * heightmap_square_width,
+        grid_size.x_ * getChunkWidth(),
         heightmap_step * 255.0f + (255.0f / 256),
-        grid_size.y_ * (heightmap_width - 1) * heightmap_square_width
+        grid_size.y_ * getChunkWidth()
     );
 }
 
@@ -69,6 +79,11 @@ Urho3D::IntVector2 TerrainGrid::getTextureweightsSize() const
         grid_size.x_ * textureweight_width,
         grid_size.y_ * textureweight_width
     );
+}
+
+float TerrainGrid::getChunkWidth() const
+{
+    return (heightmap_width - 1) * heightmap_square_width;
 }
 
 void TerrainGrid::generateFlatland(Urho3D::IntVector2 const& size)
@@ -175,6 +190,87 @@ Urho3D::Vector3 TerrainGrid::getNormal(Urho3D::Vector3 const& world_pos) const
     return Urho3D::Vector3::UP;
 }
 
+void TerrainGrid::getTerrainPatches(Urho3D::PODVector<Urho3D::TerrainPatch*>& result, Urho3D::Vector2 const& pos, float radius)
+{
+    Urho3D::Rect bounds(pos - Urho3D::Vector2::ONE * radius, pos + Urho3D::Vector2::ONE * radius);
+
+    Urho3D::IntVector2 bounds_min_i(
+        Urho3D::Clamp(Urho3D::FloorToInt(bounds.min_.x_ / getChunkWidth()), 0, grid_size.x_ - 1),
+        Urho3D::Clamp(Urho3D::FloorToInt(bounds.min_.y_ / getChunkWidth()), 0, grid_size.y_ - 1)
+    );
+    Urho3D::IntVector2 bounds_max_i(
+        Urho3D::Clamp(Urho3D::CeilToInt(bounds.max_.x_ / getChunkWidth()), 0, grid_size.x_),
+        Urho3D::Clamp(Urho3D::CeilToInt(bounds.max_.y_ / getChunkWidth()), 0, grid_size.y_)
+    );
+
+    for (int y = bounds_min_i.y_; y < bounds_max_i.y_; ++ y) {
+        for (int x = bounds_min_i.x_; x < bounds_max_i.x_; ++ x) {
+            Urho3D::Terrain* chunk = chunks[x + y * grid_size.x_];
+            Urho3D::IntVector2 patches_size = chunk->GetNumPatches();
+            for (int y = 0; y < patches_size.y_; ++ y) {
+                for (int x = 0; x < patches_size.x_; ++ x) {
+                    Urho3D::TerrainPatch* patch = chunk->GetPatch(x, y);
+                    Urho3D::BoundingBox patch_bb = patch->GetWorldBoundingBox();
+                    // If patch is southern
+                    if (pos.y_ < patch_bb.min_.z_) {
+                        // If patch is south west
+                        if (pos.x_ < patch_bb.min_.x_) {
+                            if ((pos - Urho3D::Vector2(patch_bb.min_.x_, patch_bb.min_.z_)).Length() > radius) {
+                                continue;
+                            }
+                        }
+                        // If patch is south east
+                        else if (pos.x_ > patch_bb.max_.x_) {
+                            if ((pos - Urho3D::Vector2(patch_bb.max_.x_, patch_bb.min_.z_)).Length() > radius) {
+                                continue;
+                            }
+                        }
+                        // If patch is south
+                        else {
+                            if (patch_bb.min_.z_ - pos.y_ > radius) {
+                                continue;
+                            }
+                        }
+                    }
+                    // If patch is northern
+                    if (pos.y_ > patch_bb.max_.z_) {
+                        // If patch is north west
+                        if (pos.x_ < patch_bb.min_.x_) {
+                            if ((pos - Urho3D::Vector2(patch_bb.min_.x_, patch_bb.max_.z_)).Length() > radius) {
+                                continue;
+                            }
+                        }
+                        // If patch is north east
+                        else if (pos.x_ > patch_bb.max_.x_) {
+                            if ((pos - Urho3D::Vector2(patch_bb.max_.x_, patch_bb.max_.z_)).Length() > radius) {
+                                continue;
+                            }
+                        }
+                        // If patch is north
+                        else {
+                            if (pos.y_ - patch_bb.max_.z_ > radius) {
+                                continue;
+                            }
+                        }
+                    }
+                    // If patch is on a same latitude
+                    else {
+                        // If patch is west
+                        if (patch_bb.min_.x_ - pos.x_ > radius) {
+                            continue;
+                        }
+                        // If patch is east
+                        else if (pos.x_ - patch_bb.max_.x_ > radius) {
+                            continue;
+                        }
+                    }
+                    result.Push(patch);
+                }
+            }
+        }
+    }
+}
+
 bool TerrainGrid::Load(Urho3D::Deserializer& source)
 {
     unsigned buf_size = source.ReadUInt();
@@ -211,10 +307,7 @@ bool TerrainGrid::Load(Urho3D::Deserializer& source)
 bool TerrainGrid::Save(Urho3D::Serializer& dest) const
 {
     Urho3D::PODVector<unsigned char> buf_v;
-    unsigned buf_size =
-        8 +
-        heightmap.Size() * 2 +
-        textureweights.Size();
+    unsigned buf_size = 8 + heightmap.Size() * 2 + textureweights.Size();
     buf_v.Resize(buf_size);
     Urho3D::MemoryBuffer buf(buf_v);
 // TODO: Write size topions, etc. and also textures somehow!
@@ -313,6 +406,7 @@ void TerrainGrid::buildFromBuffers()
             chunk_terrain->SetSpacing(Urho3D::Vector3(heightmap_square_width, heightmap_step, heightmap_square_width));
             chunk_terrain->SetHeightMap(chunk_heightmap);
             chunk_terrain->SetMaterial(chunk_mat);
+            chunk_terrain->SetViewMask(viewmask);
 
             chunks.Push(chunk_terrain);
         }

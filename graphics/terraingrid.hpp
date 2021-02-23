@@ -24,9 +24,12 @@ public:
     void addTexture(Urho3D::Texture* tex);
     void addTexture(Urho3D::Image* tex_img);
 
+    void setViewmask(unsigned viewmask);
+
     Urho3D::Vector3 getSize() const;
     Urho3D::IntVector2 getHeightmapSize() const;
     Urho3D::IntVector2 getTextureweightsSize() const;
+    float getChunkWidth() const;
 
     void generateFlatland(Urho3D::IntVector2 const& size);
 
@@ -37,6 +40,8 @@ public:
     float getHeight(Urho3D::Vector3 const& world_pos) const;
 
     Urho3D::Vector3 getNormal(Urho3D::Vector3 const& world_pos) const;
+
+    void getTerrainPatches(Urho3D::PODVector<Urho3D::TerrainPatch*>& result, Urho3D::Vector2 const& pos, float radius);
 
     bool Load(Urho3D::Deserializer& source) override;
     bool Save(Urho3D::Serializer& dest) const override;
@@ -70,6 +75,8 @@ private:
     WeightData textureweights;
 
     Chunks chunks;
+
+    unsigned viewmask;
 
     Urho3D::Terrain* getChunkAt(float x, float z) const;
 };
