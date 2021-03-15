@@ -128,9 +128,9 @@ inline float getAngle(Urho3D::Vector2 const& v)
 
 inline void getPitchAndYaw(float& result_pitch, float& result_yaw, Urho3D::Vector3 const& v)
 {
-    Urho3D::Vector2 v_xz(v.x_, v.z_);
-    result_pitch = getAngle(-v.y_,  v_xz.Length());
-    result_yaw = getAngle(v_xz);
+	Urho3D::Vector2 v_xz(v.x_, v.z_);
+	result_pitch = getAngle(-v.y_,  v_xz.Length());
+	result_yaw = getAngle(v_xz);
 }
 
 inline Urho3D::Vector3 getPerpendicular(Urho3D::Vector3 const& v)
@@ -245,8 +245,8 @@ inline Urho3D::Vector3 shearVectorToAnother(Urho3D::Vector3 const& v, Urho3D::Ve
 inline Urho3D::Vector3 projectToPlaneWithDirection(Urho3D::Vector3 const& pos, Urho3D::Plane const& plane, Urho3D::Vector3 const& projection_dir)
 {
 	float dp_n_d = plane.normal_.DotProduct(projection_dir);
-	assert(dp_n_d != 0);
-	float m = (plane.normal_.DotProduct(plane.normal_) * plane.d_ - pos.DotProduct(plane.normal_)) / dp_n_d;
+	assert(!Urho3D::Equals(dp_n_d, 0.0f));
+	float m = (plane.normal_.DotProduct(plane.normal_) * -plane.d_ - pos.DotProduct(plane.normal_)) / dp_n_d;
 	return pos + projection_dir * m;
 }
 
