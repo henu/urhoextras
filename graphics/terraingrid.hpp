@@ -5,6 +5,7 @@
 #include <Urho3D/Graphics/Terrain.h>
 #include <Urho3D/Graphics/Texture.h>
 #include <Urho3D/Scene/Component.h>
+#include <cstdint>
 
 namespace UrhoExtras
 {
