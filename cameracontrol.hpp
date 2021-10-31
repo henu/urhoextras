@@ -28,11 +28,13 @@ public:
 	inline void setPitch(float pitch) { this->pitch = pitch; }
 	inline void setYaw(float yaw) { this->yaw = yaw; }
 
-	void update();
+	void update(bool update_rotation = true);
 
 	void getRotation(Urho3D::Quaternion& result) const;
+	Urho3D::Quaternion getRotation() const;
 
 	void getFlyingMovement(Urho3D::Vector3& result) const;
+	Urho3D::Vector3 getFlyingMovement() const;
 
 private:
 

@@ -22,7 +22,7 @@ buttons(0)
 {
 }
 
-void CameraControl::update()
+void CameraControl::update(bool update_rotation)
 {
 	Urho3D::Input* input = GetSubsystem<Urho3D::Input>();
 
@@ -35,13 +35,20 @@ void CameraControl::update()
 	if (input->GetKeyDown(key_jump)) buttons |= BUTTON_JUMP;
 	if (input->GetKeyDown(key_crouch)) buttons |= BUTTON_CROUCH;
 
-	yaw += float(input->GetMouseMoveX()) * yaw_sensitivity;
-	pitch = Urho3D::Clamp(pitch + float(input->GetMouseMoveY()) * pitch_sensitivity, -90.0f, 90.0f);
+	if (update_rotation) {
+		yaw += float(input->GetMouseMoveX()) * yaw_sensitivity;
+		pitch = Urho3D::Clamp(pitch + float(input->GetMouseMoveY()) * pitch_sensitivity, -90.0f, 90.0f);
+	}
 }
 
 void CameraControl::getRotation(Urho3D::Quaternion& result) const
 {
 	result = Urho3D::Quaternion(pitch, yaw, 0);
+}
+
+Urho3D::Quaternion CameraControl::getRotation() const
+{
+	return Urho3D::Quaternion(pitch, yaw, 0);
 }
 
 void CameraControl::getFlyingMovement(Urho3D::Vector3& result) const
@@ -89,6 +96,13 @@ void CameraControl::getFlyingMovement(Urho3D::Vector3& result) const
 	if (!zero) {
 		result.Normalize();
 	}
+}
+
+Urho3D::Vector3 CameraControl::getFlyingMovement() const
+{
+	Urho3D::Vector3 result;
+	getFlyingMovement(result);
+	return result;
 }
 
 }
