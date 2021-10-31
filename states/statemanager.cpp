@@ -67,6 +67,21 @@ void StateManager::handleEndFrame(Urho3D::StringHash eventType, Urho3D::VariantM
 	if (stack.Empty()) {
 		engine_->Exit();
 	}
+	// If the application is shutting down, then gracefully get rid of all states
+	if (engine_->IsExiting()) {
+		bool top_one_removed = false;
+		while (!stack.Empty()) {
+			Urho3D::SharedPtr<State> state = stack.Back();
+			stack.Pop();
+			if (!top_one_removed) {
+				state->hide();
+				top_one_removed = true;
+			}
+			state->removed();
+			state->setStateManager(NULL);
+		}
+		stack.Clear();
+	}
 }
 
 }
