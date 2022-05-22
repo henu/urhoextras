@@ -19,6 +19,9 @@ class TerrainGrid : public Urho3D::Component
 
 public:
 
+    typedef Urho3D::PODVector<uint16_t> HeightData;
+    typedef Urho3D::PODVector<uint8_t> WeightData;
+
     TerrainGrid(Urho3D::Context* context);
     virtual ~TerrainGrid();
 
@@ -29,11 +32,16 @@ public:
     Urho3D::Vector3 getSize() const;
     Urho3D::IntVector2 getHeightmapSize() const;
     Urho3D::IntVector2 getTextureweightsSize() const;
+    float getHeightmapSquareWidth() const;
     float getChunkWidth() const;
+    unsigned getChunkHeightmapWidth() const;
+    unsigned getChunkTextureweightsWidth() const;
 
-    void generateFlatland(Urho3D::IntVector2 const& size);
+    void generateFlatland(Urho3D::IntVector2 const& grid_size);
 
     void generateFromImages(Urho3D::Image* terrainweight, Urho3D::Image* heightmap, unsigned heightmap_blur = 0);
+
+    void generateFromVectors(Urho3D::IntVector2 const& grid_size, HeightData heightmap, WeightData textureweights);
 
     void forgetSourceData();
 
@@ -53,9 +61,6 @@ private:
     typedef Urho3D::Vector<Urho3D::SharedPtr<Urho3D::Image> > TextureImages;
 
     typedef Urho3D::PODVector<Urho3D::Terrain*> Chunks;
-
-    typedef Urho3D::PODVector<uint16_t> HeightData;
-    typedef Urho3D::PODVector<uint8_t> WeightData;
 
     unsigned heightmap_width;
     float heightmap_square_width;

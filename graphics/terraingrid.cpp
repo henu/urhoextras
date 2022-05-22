@@ -81,14 +81,29 @@ Urho3D::IntVector2 TerrainGrid::getTextureweightsSize() const
     );
 }
 
+float TerrainGrid::getHeightmapSquareWidth() const
+{
+    return heightmap_square_width;
+}
+
 float TerrainGrid::getChunkWidth() const
 {
     return (heightmap_width - 1) * heightmap_square_width;
 }
 
-void TerrainGrid::generateFlatland(Urho3D::IntVector2 const& size)
+unsigned TerrainGrid::getChunkHeightmapWidth() const
 {
-    grid_size = size;
+    return heightmap_width;
+}
+
+unsigned TerrainGrid::getChunkTextureweightsWidth() const
+{
+    return textureweight_width;
+}
+
+void TerrainGrid::generateFlatland(Urho3D::IntVector2 const& grid_size)
+{
+    this->grid_size = grid_size;
 
     // Prepare buffers
     Urho3D::IntVector2 heightmap_size = getHeightmapSize();
@@ -161,6 +176,26 @@ void TerrainGrid::generateFromImages(Urho3D::Image* terrainweight, Urho3D::Image
             textureweights.Push((color >> 16) & 0xff);
         }
     }
+
+    buildFromBuffers();
+}
+
+void TerrainGrid::generateFromVectors(Urho3D::IntVector2 const& grid_size, HeightData heightmap, WeightData textureweights)
+{
+    // Validate vector sizes
+    float expected_heightmap_size = (grid_size.x_ * (heightmap_width - 1) + 1) * (grid_size.y_ * (heightmap_width - 1) + 1);
+    if (expected_heightmap_size != heightmap.Size()) {
+        throw std::runtime_error(("Unexpected heightmap size " + Urho3D::String(heightmap.Size()) + ". Should be " + Urho3D::String(expected_heightmap_size)).CString());
+    }
+    float expected_textureweights_size = grid_size.x_ * grid_size.y_ * textureweight_width * textureweight_width * 3;
+    if (expected_textureweights_size != textureweights.Size()) {
+        throw std::runtime_error(("Unexpected textureweights size " + Urho3D::String(textureweights.Size()) + ". Should be " + Urho3D::String(expected_textureweights_size)).CString());
+    }
+
+    // Copy data
+    this->grid_size = grid_size;
+    this->heightmap = heightmap;
+    this->textureweights = textureweights;
 
     buildFromBuffers();
 }
