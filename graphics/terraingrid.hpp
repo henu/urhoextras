@@ -22,7 +22,6 @@ public:
     TerrainGrid(Urho3D::Context* context);
     virtual ~TerrainGrid();
 
-    void addTexture(Urho3D::Texture* tex);
     void addTexture(Urho3D::Image* tex_img);
 
     void setViewmask(unsigned viewmask);
@@ -44,9 +43,6 @@ public:
 
     void getTerrainPatches(Urho3D::PODVector<Urho3D::TerrainPatch*>& result, Urho3D::Vector2 const& pos, float radius);
 
-    bool Load(Urho3D::Deserializer& source) override;
-    bool Save(Urho3D::Serializer& dest) const override;
-
     void buildFromBuffers();
 
     static void registerObject(Urho3D::Context* context);
@@ -54,6 +50,7 @@ public:
 private:
 
     typedef Urho3D::Vector<Urho3D::SharedPtr<Urho3D::Texture> > Textures;
+    typedef Urho3D::Vector<Urho3D::SharedPtr<Urho3D::Image> > TextureImages;
 
     typedef Urho3D::PODVector<Urho3D::Terrain*> Chunks;
 
@@ -68,6 +65,7 @@ private:
     unsigned textureweight_width;
 
     Textures texs;
+    TextureImages texs_images;
 
     Urho3D::IntVector2 grid_size;
 
@@ -75,11 +73,20 @@ private:
     HeightData heightmap;
     WeightData textureweights;
 
-    Chunks chunks;
-
     unsigned viewmask;
 
+    Chunks chunks;
+
     Urho3D::Terrain* getChunkAt(float x, float z) const;
+
+    Urho3D::ResourceRefList getTexturesImagesAttr() const;
+    void setTexturesImagesAttr(Urho3D::ResourceRefList const& value);
+
+    Urho3D::PODVector<unsigned char> getHeightmapAttr() const;
+    void setHeightmapAttr(Urho3D::PODVector<unsigned char>const& value);
+
+    Urho3D::PODVector<unsigned char> getTextureweightsAttr() const;
+    void setTextureweightsAttr(Urho3D::PODVector<unsigned char>const& value);
 };
 
 }

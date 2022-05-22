@@ -20,14 +20,18 @@ namespace Graphics
 {
 
 unsigned const DEFAULT_HEIGHTMAP_WIDTH = 513;
+float const DEFAULT_HEIGHTMAP_SQUARE_WIDTH = 0.5;
+float const DEFAULT_HEIGHTMAP_STEP = 1;
+unsigned const DEFAULT_TEXTURE_REPEATS = 32;
+unsigned const DEFAULT_TEXTUREWEIGHT_WIDTH = 1024;
 
 TerrainGrid::TerrainGrid(Urho3D::Context* context) :
     Urho3D::Component(context),
     heightmap_width(DEFAULT_HEIGHTMAP_WIDTH),
-    heightmap_square_width(0.5),
-    heightmap_step(1),
-    texture_repeats(32),
-    textureweight_width(1024),
+    heightmap_square_width(DEFAULT_HEIGHTMAP_SQUARE_WIDTH),
+    heightmap_step(DEFAULT_HEIGHTMAP_STEP),
+    texture_repeats(DEFAULT_TEXTURE_REPEATS),
+    textureweight_width(DEFAULT_TEXTUREWEIGHT_WIDTH),
     viewmask(Urho3D::DEFAULT_VIEWMASK)
 {
 }
@@ -36,16 +40,12 @@ TerrainGrid::~TerrainGrid()
 {
 }
 
-void TerrainGrid::addTexture(Urho3D::Texture* tex)
-{
-    texs.Push(Urho3D::SharedPtr<Urho3D::Texture>(tex));
-}
-
 void TerrainGrid::addTexture(Urho3D::Image* tex_img)
 {
     Urho3D::SharedPtr<Urho3D::Texture2D> tex(new Urho3D::Texture2D(context_));
     tex->SetData(tex_img);
-    addTexture(tex);
+    texs.Push(Urho3D::SharedPtr<Urho3D::Texture>(tex));
+    texs_images.Push(Urho3D::SharedPtr<Urho3D::Image>(tex_img));
 }
 
 void TerrainGrid::setViewmask(unsigned viewmask)
@@ -103,7 +103,6 @@ void TerrainGrid::generateFlatland(Urho3D::IntVector2 const& size)
 
     buildFromBuffers();
 }
-
 
 void TerrainGrid::generateFromImages(Urho3D::Image* terrainweight, Urho3D::Image* heightmap, unsigned heightmap_blur)
 {
@@ -271,66 +270,6 @@ void TerrainGrid::getTerrainPatches(Urho3D::PODVector<Urho3D::TerrainPatch*>& re
     }
 }
 
-bool TerrainGrid::Load(Urho3D::Deserializer& source)
-{
-    unsigned buf_size = source.ReadUInt();
-
-    Urho3D::PODVector<unsigned char> buf_v;
-    buf_v.Resize(buf_size);
-    Urho3D::MemoryBuffer buf(buf_v);
-
-    if (!DecompressStream(buf, source)) {
-        return false;
-    }
-    buf.Seek(0);
-
-    // Grid size
-    grid_size = buf.ReadIntVector2();
-
-    // Heightmap
-    Urho3D::IntVector2 heightmap_size = getHeightmapSize();
-    heightmap.Resize(heightmap_size.x_ * heightmap_size.y_);
-    for (unsigned i = 0; i < heightmap.Size(); ++ i) {
-        heightmap[i] = buf.ReadUShort();
-    }
-
-    // Textureweights
-    Urho3D::IntVector2 textureweights_size = getTextureweightsSize();
-    textureweights.Resize(textureweights_size.x_ * textureweights_size.y_ * texs.Size());
-    for (unsigned i = 0; i < textureweights.Size(); ++ i) {
-        textureweights[i] = buf.ReadUByte();
-    }
-
-    return true;
-}
-
-bool TerrainGrid::Save(Urho3D::Serializer& dest) const
-{
-    Urho3D::PODVector<unsigned char> buf_v;
-    unsigned buf_size = 8 + heightmap.Size() * 2 + textureweights.Size();
-    buf_v.Resize(buf_size);
-    Urho3D::MemoryBuffer buf(buf_v);
-// TODO: Write size topions, etc. and also textures somehow!
-
-    // Grid size
-    buf.WriteIntVector2(grid_size);
-
-    // Heightmap
-    for (unsigned i = 0; i < heightmap.Size(); ++ i) {
-        buf.WriteUShort(heightmap[i]);
-    }
-
-    // Textureweights
-    for (unsigned i = 0; i < textureweights.Size(); ++ i) {
-        buf.WriteUByte(textureweights[i]);
-    }
-
-    // Write original data length and compress the data
-    dest.WriteUInt(buf_size);
-    buf.Seek(0);
-    return Urho3D::CompressStream(dest, buf);
-}
-
 void TerrainGrid::buildFromBuffers()
 {
     Urho3D::ResourceCache* resources = GetSubsystem<Urho3D::ResourceCache>();
@@ -338,8 +277,10 @@ void TerrainGrid::buildFromBuffers()
     Urho3D::Node* node = GetNode();
 
     // Clear possible old stuff
+    for (Urho3D::Terrain* chunk : chunks) {
+        chunk->GetNode()->Remove();
+    }
     chunks.Clear();
-    node->RemoveChildren(true, true, true);
 
     Urho3D::SharedPtr<Urho3D::Material> original_mat(new Urho3D::Material(context_));
     original_mat->SetNumTechniques(1);
@@ -435,6 +376,18 @@ void TerrainGrid::buildFromBuffers()
 void TerrainGrid::registerObject(Urho3D::Context* context)
 {
     context->RegisterFactory<TerrainGrid>();
+
+    // These are only used for network replication for now
+    URHO3D_ATTRIBUTE("Heightmap width", unsigned, heightmap_width, DEFAULT_HEIGHTMAP_WIDTH, Urho3D::AM_DEFAULT);
+    URHO3D_ATTRIBUTE("Heightmap square width", float, heightmap_square_width, DEFAULT_HEIGHTMAP_SQUARE_WIDTH, Urho3D::AM_DEFAULT);
+    URHO3D_ATTRIBUTE("Heightmap step", float, heightmap_step, DEFAULT_HEIGHTMAP_STEP, Urho3D::AM_DEFAULT);
+    URHO3D_ATTRIBUTE("Texture repeats", unsigned, texture_repeats, DEFAULT_TEXTURE_REPEATS, Urho3D::AM_DEFAULT);
+    URHO3D_ATTRIBUTE("Textureweight width", unsigned, textureweight_width, DEFAULT_TEXTUREWEIGHT_WIDTH, Urho3D::AM_DEFAULT);
+    URHO3D_ACCESSOR_ATTRIBUTE("Texture Images", getTexturesImagesAttr, setTexturesImagesAttr, Urho3D::ResourceRefList, Urho3D::ResourceRefList(Urho3D::Image::GetTypeStatic()), Urho3D::AM_DEFAULT);
+    URHO3D_ATTRIBUTE("Grid size", Urho3D::IntVector2, grid_size, Urho3D::IntVector2::ZERO, Urho3D::AM_DEFAULT);
+    URHO3D_ACCESSOR_ATTRIBUTE("Heightmap", getHeightmapAttr, setHeightmapAttr, Urho3D::PODVector<unsigned char>, Urho3D::Variant::emptyBuffer, Urho3D::AM_DEFAULT);
+    URHO3D_ACCESSOR_ATTRIBUTE("Textureweights", getTextureweightsAttr, setTextureweightsAttr, Urho3D::PODVector<unsigned char>, Urho3D::Variant::emptyBuffer, Urho3D::AM_DEFAULT);
+    URHO3D_ATTRIBUTE("Viewask", unsigned, viewmask, Urho3D::DEFAULT_VIEWMASK, Urho3D::AM_DEFAULT);
 }
 
 Urho3D::Terrain* TerrainGrid::getChunkAt(float x, float z) const
@@ -446,6 +399,86 @@ Urho3D::Terrain* TerrainGrid::getChunkAt(float x, float z) const
     if (z_i < 0) return NULL;
     if (z_i >= grid_size.y_) return NULL;
     return chunks[x_i + z_i * grid_size.x_];
+}
+
+Urho3D::ResourceRefList TerrainGrid::getTexturesImagesAttr() const
+{
+    Urho3D::ResourceRefList texs_images_attr(Urho3D::Image::GetTypeStatic());
+    for (auto tex_image : texs_images) {
+        texs_images_attr.names_.Push(Urho3D::GetResourceName(tex_image));
+    }
+    return texs_images_attr;
+}
+
+void TerrainGrid::setTexturesImagesAttr(Urho3D::ResourceRefList const& value)
+{
+    Urho3D::ResourceCache* resources = GetSubsystem<Urho3D::ResourceCache>();
+
+    // Clear existing stuff
+    texs.Clear();
+    texs_images.Clear();
+
+    for (Urho3D::String res_name : value.names_) {
+        Urho3D::SharedPtr<Urho3D::Image> tex_img(resources->GetResource<Urho3D::Image>(res_name));
+        texs_images.Push(tex_img);
+        // Convert image to texture
+        Urho3D::SharedPtr<Urho3D::Texture2D> tex(new Urho3D::Texture2D(context_));
+        tex->SetData(tex_img);
+        texs.Push(Urho3D::SharedPtr<Urho3D::Texture>(tex));
+    }
+}
+
+Urho3D::PODVector<unsigned char> TerrainGrid::getHeightmapAttr() const
+{
+    Urho3D::VectorBuffer heightmap_vbuf;
+    for (unsigned i = 0; i < heightmap.Size(); ++ i) {
+        heightmap_vbuf.WriteUShort(heightmap[i]);
+    }
+    heightmap_vbuf.Seek(0);
+    Urho3D::VectorBuffer heightmap_compressed_vbuf;
+    if (!Urho3D::CompressStream(heightmap_compressed_vbuf, heightmap_vbuf)) {
+        throw std::runtime_error("Unable to compress TerrainGrid.heightmap for attribute serialization!");
+    }
+    return heightmap_compressed_vbuf.GetBuffer();
+}
+
+void TerrainGrid::setHeightmapAttr(Urho3D::PODVector<unsigned char> const& value)
+{
+    Urho3D::MemoryBuffer heightmap_compressed_buf(value);
+    Urho3D::VectorBuffer heightmap_vbuf;
+    if (!Urho3D::DecompressStream(heightmap_vbuf, heightmap_compressed_buf)) {
+        throw std::runtime_error("Unable to decompress TerrainGrid.heightmap for attribute deserialization!");
+    }
+    heightmap_vbuf.Seek(0);
+    heightmap.Clear();
+    while (!heightmap_vbuf.IsEof()) {
+        heightmap.Push(heightmap_vbuf.ReadUShort());
+    }
+}
+
+Urho3D::PODVector<unsigned char> TerrainGrid::getTextureweightsAttr() const
+{
+    Urho3D::MemoryBuffer textureweights_buf(textureweights);
+    Urho3D::VectorBuffer textureweights_compressed_vbuf;
+    if (!Urho3D::CompressStream(textureweights_compressed_vbuf, textureweights_buf)) {
+        throw std::runtime_error("Unable to compress TerrainGrid.textureweights for attribute serialization!");
+    }
+    return textureweights_compressed_vbuf.GetBuffer();
+}
+
+void TerrainGrid::setTextureweightsAttr(Urho3D::PODVector<unsigned char> const& value)
+{
+    Urho3D::MemoryBuffer textureweights_compressed_buf(value);
+    Urho3D::VectorBuffer textureweights_vbuf;
+    if (!Urho3D::DecompressStream(textureweights_vbuf, textureweights_compressed_buf)) {
+        throw std::runtime_error("Unable to decompress TerrainGrid.textureweights for attribute deserialization!");
+    }
+    textureweights.Clear();
+// TODO: Make some kind of fast memory copy!
+    textureweights_vbuf.Seek(0);
+    while (!textureweights_vbuf.IsEof()) {
+        textureweights.Push(textureweights_vbuf.ReadUByte());
+    }
 }
 
 }
