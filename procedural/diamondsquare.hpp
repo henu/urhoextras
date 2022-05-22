@@ -19,14 +19,16 @@ public:
 
 	inline DiamondSquare(unsigned base, unsigned seed) :
 	seed(seed),
-	base(base),
-	mask(base - 1)
+	base(base)
 	{
 		base_bits = 0;
 		while (base > 1) {
 			++ base_bits;
 			base /= 2;
 		}
+	}
+	inline virtual ~DiamondSquare()
+	{
 	}
 
 private:
@@ -35,7 +37,6 @@ private:
 
 	unsigned base;
 	unsigned base_bits;
-	long mask;
 
 	virtual void doGet(Value& result, long x, long y)
 	{
