@@ -425,6 +425,11 @@ void TerrainGrid::registerObject(Urho3D::Context* context)
     URHO3D_ATTRIBUTE("Viewask", unsigned, viewmask, Urho3D::DEFAULT_VIEWMASK, Urho3D::AM_DEFAULT);
 }
 
+void TerrainGrid::ApplyAttributes()
+{
+    buildFromBuffers();
+}
+
 Urho3D::Terrain* TerrainGrid::getChunkAt(float x, float z) const
 {
     int x_i = Urho3D::FloorToInt(x / (heightmap_width - 1) / heightmap_square_width);

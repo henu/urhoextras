@@ -55,6 +55,8 @@ public:
 
     static void registerObject(Urho3D::Context* context);
 
+    void ApplyAttributes() override;
+
 private:
 
     typedef Urho3D::Vector<Urho3D::SharedPtr<Urho3D::Texture> > Textures;
