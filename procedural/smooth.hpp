@@ -34,6 +34,9 @@ public:
             i->weight = weight;
         }
     }
+    inline virtual ~Smooth()
+    {
+    }
 
 private:
 
