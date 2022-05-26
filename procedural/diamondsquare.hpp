@@ -12,14 +12,16 @@ namespace UrhoExtras
 namespace Procedural
 {
 
-class DiamondSquare : public Function
+class DiamondSquare : public Function<float>
 {
+    URHO3D_OBJECT(DiamondSquare, UrhoExtras::Procedural::Function<float>);
 
 public:
 
-    inline DiamondSquare(unsigned base, unsigned seed) :
-    seed(seed),
-    base(base)
+    inline DiamondSquare(Urho3D::Context* context, unsigned base, unsigned seed, long begin_x, long begin_y, long end_x, long end_y) :
+        UrhoExtras::Procedural::Function<float>(context, begin_x, begin_y, end_x, end_y),
+        seed(seed),
+        base(base)
     {
         base_bits = 0;
         while (base > 1) {
@@ -38,7 +40,7 @@ private:
     unsigned base;
     unsigned base_bits;
 
-    virtual void doGet(Value& result, long x, long y)
+    void doGet(float& result, long x, long y) override
     {
         uint32_t r = md5Rng(seed, x, y);
         float f = double(r) / 0xffffffff;
@@ -57,7 +59,7 @@ private:
                 float south = get(x, y - step);
                 float east = get(x + step, y);
                 float west = get(x - step, y);
-                result.Push(Urho3D::Clamp<float>((north + south + east + west) / 4 + (f - 0.5) * 2 / (base >> bits), 0, 1));
+                result = Urho3D::Clamp<float>((north + south + east + west) / 4 + (f - 0.5) * 2 / (base >> bits), 0, 1);
                 return;
             }
             // Case of diamond step
@@ -66,7 +68,7 @@ private:
                 float se = get(x + step, y - step);
                 float nw = get(x - step, y + step);
                 float sw = get(x - step, y - step);
-                result.Push(Urho3D::Clamp<float>((ne + se + nw + sw) / 4 + (f - 0.5) * 4 / (base >> bits), 0, 1));
+                result = Urho3D::Clamp<float>((ne + se + nw + sw) / 4 + (f - 0.5) * 4 / (base >> bits), 0, 1);
                 return;
             }
 
@@ -75,8 +77,12 @@ private:
         }
 
         // Case of initial corner values
-        result.Push(f);
-        return;
+        result = f;
+    }
+
+    bool allowOutOfBounds() const override
+    {
+        return true;
     }
 };
 
