@@ -52,6 +52,14 @@ int getJsonInt(
     int min_limit = -0x80000000,
     int max_limit = 0x7fffffff
 );
+int getJsonIntIfExists(
+    Urho3D::JSONValue const& json,
+    Urho3D::String const& key,
+    Urho3D::String const& error_prefix = Urho3D::String::EMPTY,
+    int default_value = 0,
+    int min_limit = -0x80000000,
+    int max_limit = 0x7fffffff
+);
 float getJsonFloat(
     Urho3D::JSONValue const& json,
     Urho3D::String const& key,

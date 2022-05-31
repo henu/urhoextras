@@ -174,6 +174,21 @@ int getJsonInt(
     return result;
 }
 
+int getJsonIntIfExists(
+    Urho3D::JSONValue const& json,
+    Urho3D::String const& key,
+    Urho3D::String const& error_prefix,
+    int default_value,
+    int min_limit,
+    int max_limit
+)
+{
+    if (!json.Contains(key)) {
+        return default_value;
+    }
+    return getJsonInt(json, key, error_prefix, min_limit, max_limit);
+}
+
 float getJsonFloat(
     Urho3D::JSONValue const& json,
     Urho3D::String const& key,
