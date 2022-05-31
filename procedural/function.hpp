@@ -100,6 +100,22 @@ public:
         workqueue->Complete(0xffffffff);
     }
 
+protected:
+
+    inline void set(long x, long y, T val)
+    {
+        if (x < data_begin_x || y < data_begin_y || x >= data_end_x || y >= data_end_y) {
+            if (!allowOutOfBounds()) {
+                throw std::runtime_error("Out of bounds!");
+            }
+            oob_cache[Pos(x, y)] = val;
+        } else {
+            unsigned offset = y * (data_end_x - data_begin_x) + x;
+            data[offset] = val;
+            data_ready[offset] = true;
+        }
+    }
+
 private:
 
     struct Pos
