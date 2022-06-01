@@ -60,7 +60,7 @@ Urho3D::Vector3 TerrainGrid::getSize() const
 {
     return Urho3D::Vector3(
         grid_size.x_ * getChunkWidth(),
-        heightmap_step * 255.0f + (255.0f / 256),
+        heightmap_step * (255.0f + 255.0f / 256),
         grid_size.y_ * getChunkWidth()
     );
 }
