@@ -75,6 +75,70 @@ bool saveJson(Urho3D::JSONValue const& json, Urho3D::Serializer& dest)
 	return true;
 }
 
+int jsonToInt(
+    Urho3D::JSONValue const& json,
+    Urho3D::String const& error_prefix,
+    int min_limit,
+    int max_limit
+)
+{
+    if (!json.IsNumber()) {
+        throw JsonValidatorError(error_prefix + "Must be an integer!");
+    }
+    if (json.GetNumberType() == Urho3D::JSONNT_NAN || json.GetNumberType() == Urho3D::JSONNT_FLOAT_DOUBLE) {
+        throw JsonValidatorError(error_prefix + "Must be an integer!");
+    }
+    int result = json.GetInt();
+    if (result < min_limit) {
+        throw JsonValidatorError(error_prefix + "Must be " + Urho3D::String(min_limit) + " or bigger!");
+    }
+    if (result > max_limit) {
+        throw JsonValidatorError(error_prefix + "Must be " + Urho3D::String(max_limit) + " or smaller!");
+    }
+    return result;
+}
+
+float jsonToFloat(
+    Urho3D::JSONValue const& json,
+    Urho3D::String const& error_prefix,
+    float min_limit,
+    float max_limit
+)
+{
+    if (!json.IsNumber()) {
+        throw JsonValidatorError(error_prefix + "Must be a float!");
+    }
+    if (json.GetNumberType() == Urho3D::JSONNT_NAN) {
+        throw JsonValidatorError(error_prefix + "Must be a float!");
+    }
+    float result = json.GetFloat();
+    if (result < min_limit) {
+        throw JsonValidatorError(error_prefix + "Must be " + Urho3D::String(min_limit) + " or bigger!");
+    }
+    if (result > max_limit) {
+        throw JsonValidatorError(error_prefix + "Must be " + Urho3D::String(max_limit) + " or smaller!");
+    }
+    return result;
+}
+
+Urho3D::JSONValue getJsonObject(
+    Urho3D::JSONValue const& json,
+    Urho3D::String const& key,
+    Urho3D::String const& error_prefix
+)
+{
+    if (!json.IsObject()) {
+        throw JsonValidatorError(error_prefix + "Unable to get a member from non-object!");
+    }
+    if (!json.Contains(key)) {
+        throw JsonValidatorError(error_prefix + "Not found!");
+    }
+    if (!json.Get(key).IsObject()) {
+        throw JsonValidatorError(error_prefix + "Not an object!");
+    }
+    return json.Get(key);
+}
+
 Urho3D::String getJsonString(
     Urho3D::JSONValue const& json,
     Urho3D::String const& key,
@@ -82,6 +146,9 @@ Urho3D::String getJsonString(
     Urho3D::Vector<Urho3D::String> const& allowed_values
 )
 {
+    if (!json.IsObject()) {
+        throw JsonValidatorError(error_prefix + "Unable to get a member from non-object!");
+    }
     if (!json.Contains(key)) {
         throw JsonValidatorError(error_prefix + "Not found!");
     }
@@ -113,6 +180,9 @@ Urho3D::String getJsonStringIfExists(
     Urho3D::Vector<Urho3D::String> const& allowed_values
 )
 {
+    if (!json.IsObject()) {
+        throw JsonValidatorError(error_prefix + "Unable to get a member from non-object!");
+    }
     if (!json.Contains(key)) {
         return default_value;
     }
@@ -125,6 +195,9 @@ bool getJsonBoolean(
     Urho3D::String const& error_prefix
 )
 {
+    if (!json.IsObject()) {
+        throw JsonValidatorError(error_prefix + "Unable to get a member from non-object!");
+    }
     if (!json.Contains(key)) {
         throw JsonValidatorError(error_prefix + "Not found!");
     }
@@ -141,6 +214,9 @@ bool getJsonBooleanIfExists(
     bool default_value
 )
 {
+    if (!json.IsObject()) {
+        throw JsonValidatorError(error_prefix + "Unable to get a member from non-object!");
+    }
     if (!json.Contains(key)) {
         return default_value;
     }
@@ -155,23 +231,13 @@ int getJsonInt(
     int max_limit
 )
 {
+    if (!json.IsObject()) {
+        throw JsonValidatorError(error_prefix + "Unable to get a member from non-object!");
+    }
     if (!json.Contains(key)) {
         throw JsonValidatorError(error_prefix + "Not found!");
     }
-    if (!json.Get(key).IsNumber()) {
-        throw JsonValidatorError(error_prefix + "Must be an integer!");
-    }
-    if (json.Get(key).GetNumberType() == Urho3D::JSONNT_NAN || json.Get(key).GetNumberType() == Urho3D::JSONNT_FLOAT_DOUBLE) {
-        throw JsonValidatorError(error_prefix + "Must be an integer!");
-    }
-    int result = json.Get(key).GetInt();
-    if (result < min_limit) {
-        throw JsonValidatorError(error_prefix + "Must be " + Urho3D::String(min_limit) + " or bigger!");
-    }
-    if (result > max_limit) {
-        throw JsonValidatorError(error_prefix + "Must be " + Urho3D::String(max_limit) + " or smaller!");
-    }
-    return result;
+    return jsonToInt(json.Get(key), error_prefix, min_limit, max_limit);
 }
 
 int getJsonIntIfExists(
@@ -183,10 +249,13 @@ int getJsonIntIfExists(
     int max_limit
 )
 {
+    if (!json.IsObject()) {
+        throw JsonValidatorError(error_prefix + "Unable to get a member from non-object!");
+    }
     if (!json.Contains(key)) {
         return default_value;
     }
-    return getJsonInt(json, key, error_prefix, min_limit, max_limit);
+    return jsonToInt(json.Get(key), error_prefix, min_limit, max_limit);
 }
 
 float getJsonFloat(
@@ -197,23 +266,13 @@ float getJsonFloat(
     float max_limit
 )
 {
+    if (!json.IsObject()) {
+        throw JsonValidatorError(error_prefix + "Unable to get a member from non-object!");
+    }
     if (!json.Contains(key)) {
         throw JsonValidatorError(error_prefix + "Not found!");
     }
-    if (!json.Get(key).IsNumber()) {
-        throw JsonValidatorError(error_prefix + "Must be a float!");
-    }
-    if (json.Get(key).GetNumberType() == Urho3D::JSONNT_NAN) {
-        throw JsonValidatorError(error_prefix + "Must be a float!");
-    }
-    float result = json.Get(key).GetFloat();
-    if (result < min_limit) {
-        throw JsonValidatorError(error_prefix + "Must be " + Urho3D::String(min_limit) + " or bigger!");
-    }
-    if (result > max_limit) {
-        throw JsonValidatorError(error_prefix + "Must be " + Urho3D::String(max_limit) + " or smaller!");
-    }
-    return result;
+    return jsonToFloat(json.Get(key), error_prefix, min_limit, max_limit);
 }
 
 float getJsonFloatIfExists(
@@ -225,10 +284,13 @@ float getJsonFloatIfExists(
     float max_limit
 )
 {
+    if (!json.IsObject()) {
+        throw JsonValidatorError(error_prefix + "Unable to get a member from non-object!");
+    }
     if (!json.Contains(key)) {
         return default_value;
     }
-    return getJsonFloat(json, key, error_prefix, min_limit, max_limit);
+    return jsonToFloat(json.Get(key), error_prefix, min_limit, max_limit);
 }
 
 Urho3D::JSONArray getJsonArray(
@@ -239,6 +301,9 @@ Urho3D::JSONArray getJsonArray(
     unsigned max_size_limit
 )
 {
+    if (!json.IsObject()) {
+        throw JsonValidatorError(error_prefix + "Unable to get a member from non-object!");
+    }
     if (!json.Contains(key)) {
         throw JsonValidatorError(error_prefix + "Not found!");
     }
@@ -266,6 +331,9 @@ Urho3D::JSONArray getJsonArrayIfExists(
     unsigned max_size_limit
 )
 {
+    if (!json.IsObject()) {
+        throw JsonValidatorError(error_prefix + "Unable to get a member from non-object!");
+    }
     if (!json.Contains(key)) {
         return Urho3D::JSONArray();
     }
@@ -280,6 +348,9 @@ Urho3D::Vector2 getJsonVector2(
     Urho3D::Vector2 const& max_limit
 )
 {
+    if (!json.IsObject()) {
+        throw JsonValidatorError(error_prefix + "Unable to get a member from non-object!");
+    }
     if (!json.Contains(key)) {
         throw JsonValidatorError(error_prefix + "Not found!");
     }
@@ -315,6 +386,9 @@ Urho3D::Color getJsonColor(
     Urho3D::String const& error_prefix
 )
 {
+    if (!json.IsObject()) {
+        throw JsonValidatorError(error_prefix + "Unable to get a member from non-object!");
+    }
     if (!json.Contains(key)) {
         throw JsonValidatorError(error_prefix + "Not found!");
     }
@@ -375,10 +449,105 @@ Urho3D::Color getJsonColorIfExists(
     Urho3D::Color const& default_value
 )
 {
+    if (!json.IsObject()) {
+        throw JsonValidatorError(error_prefix + "Unable to get a member from non-object!");
+    }
     if (!json.Contains(key)) {
         return default_value;
     }
     return getJsonColor(json, key, error_prefix);
+}
+
+Urho3D::PODVector<int> getJsonIntArray(
+    Urho3D::JSONValue const& json,
+    Urho3D::String const& error_prefix,
+    unsigned min_size_limit,
+    unsigned max_size_limit
+)
+{
+    if (!json.IsArray()) {
+        throw JsonValidatorError(error_prefix + "Must be an array!");
+    }
+    Urho3D::JSONArray arr = json.GetArray();
+    if (arr.Size() < min_size_limit) {
+        throw JsonValidatorError(error_prefix + "Must have at least " + Urho3D::String(min_size_limit) + " items!");
+    }
+    if (arr.Size() > max_size_limit) {
+        throw JsonValidatorError(error_prefix + "Must have a maximum of " + Urho3D::String(min_size_limit) + " items!");
+    }
+    Urho3D::PODVector<int> result;
+    for (auto item : arr) {
+        result.Push(jsonToInt(item));
+    }
+    return result;
+}
+
+Urho3D::PODVector<int> getJsonIntArray(
+    Urho3D::JSONValue const& json,
+    Urho3D::String const& key,
+    Urho3D::String const& error_prefix,
+    unsigned min_size_limit,
+    unsigned max_size_limit
+)
+{
+    Urho3D::JSONArray arr = getJsonArray(json, key, error_prefix, min_size_limit, max_size_limit);
+    Urho3D::PODVector<int> result;
+    for (auto item : arr) {
+        result.Push(jsonToInt(item));
+    }
+    return result;
+}
+
+Urho3D::PODVector<int> getJsonIntArrayIfExists(
+    Urho3D::JSONValue const& json,
+    Urho3D::String const& key,
+    Urho3D::String const& error_prefix,
+    unsigned min_size_limit,
+    unsigned max_size_limit,
+    Urho3D::PODVector<int> const& default_value
+)
+{
+    if (!json.IsObject()) {
+        throw JsonValidatorError(error_prefix + "Unable to get a member from non-object!");
+    }
+    if (!json.Contains(key)) {
+        return default_value;
+    }
+    return getJsonIntArray(json, key, error_prefix, min_size_limit, max_size_limit);
+}
+
+Urho3D::PODVector<float> getJsonFloatArray(
+    Urho3D::JSONValue const& json,
+    Urho3D::String const& key,
+    Urho3D::String const& error_prefix,
+    unsigned min_size_limit,
+    unsigned max_size_limit
+)
+{
+    Urho3D::JSONArray arr = getJsonArray(json, key, error_prefix, min_size_limit, max_size_limit);
+    Urho3D::PODVector<float> result;
+    for (auto item : arr) {
+        result.Push(jsonToFloat(item));
+    }
+    return result;
+}
+
+Urho3D::PODVector<float> getJsonFloatArrayIfExists(
+    Urho3D::JSONValue const& json,
+    Urho3D::String const& key,
+    Urho3D::String const& error_prefix,
+    unsigned min_size_limit,
+    unsigned max_size_limit,
+    Urho3D::PODVector<float> const& default_value
+)
+{
+    if (!json.IsObject()) {
+        throw JsonValidatorError(error_prefix + "Unable to get a member from non-object!");
+    }
+    if (!json.Contains(key)) {
+        return default_value;
+    }
+    return getJsonFloatArray(json, key, error_prefix, min_size_limit, max_size_limit);
 }
 
 }
