@@ -53,7 +53,10 @@ inline void forceVectorsPerpendicular(Urho3D::Vector3& v1, Urho3D::Vector3& v2);
 // but ray is infinite only from head!
 inline void nearestPointToLine(Urho3D::Vector3 const& point,
                                Urho3D::Vector3 const& line_pos1, Urho3D::Vector3 const& line_pos2,
-                               Urho3D::Vector3* nearest_point, float* m, float* dst_to_point);
+                               Urho3D::Vector3* nearest_point = nullptr, float* m = nullptr, float* dst_to_point = nullptr);
+inline void nearestPointToLine(Urho3D::Vector2 const& point,
+                               Urho3D::Vector2 const& line_pos1, Urho3D::Vector2 const& line_pos2,
+                               Urho3D::Vector2* nearest_point = nullptr, float* m = nullptr, float* dst_to_point = nullptr);
 
 // Returns distance between two infinite lines
 inline float distanceBetweenLines(Urho3D::Vector3 const& begin1, Urho3D::Vector3 const& dir1,
@@ -198,6 +201,29 @@ inline void nearestPointToLine(Urho3D::Vector3 const& point,
 		*dst_to_point = ((line_pos1 + dir * m2) - point).Length();
 	}
 }
+
+inline void nearestPointToLine(Urho3D::Vector2 const& point,
+                               Urho3D::Vector2 const& line_pos1, Urho3D::Vector2 const& line_pos2,
+                               Urho3D::Vector2* nearest_point, float* m, float* dst_to_point)
+{
+	Urho3D::Vector2 dir = line_pos2 - line_pos1;
+	float dp_rd_rd = dir.DotProduct(dir);
+	assert(dp_rd_rd != 0.0);
+	float m2 = dir.DotProduct(point - line_pos1) / dp_rd_rd;
+	// Store results
+	if (m) {
+		*m = m2;
+	}
+	if (nearest_point) {
+		*nearest_point = line_pos1 + dir * m2;
+		if (dst_to_point) {
+			*dst_to_point = (*nearest_point - point).Length();
+		}
+	} else if (dst_to_point) {
+		*dst_to_point = ((line_pos1 + dir * m2) - point).Length();
+	}
+}
+
 
 inline float distanceBetweenLines(Urho3D::Vector3 const& begin1, Urho3D::Vector3 const& dir1,
                                   Urho3D::Vector3 const& begin2, Urho3D::Vector3 const& dir2,
