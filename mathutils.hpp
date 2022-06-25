@@ -38,6 +38,9 @@ inline float getAngle(Urho3D::Vector2 const& v);
 // (-1, 0, 0) = pitch 0 deg, yaw -90 deg,
 inline void getPitchAndYaw(float& result_pitch, float& result_yaw, Urho3D::Vector3 const& v);
 
+// Converts angle, so it's [-180 - 180]
+inline float fixAngle(float angle);
+
 // Returns a vector that is perpendicular to given one
 inline Urho3D::Vector3 getPerpendicular(Urho3D::Vector3 const& v);
 
@@ -62,6 +65,11 @@ inline void nearestPointToLine(Urho3D::Vector2 const& point,
 inline float distanceBetweenLines(Urho3D::Vector3 const& begin1, Urho3D::Vector3 const& dir1,
                                   Urho3D::Vector3 const& begin2, Urho3D::Vector3 const& dir2,
                                   Urho3D::Vector3* nearest_point1, Urho3D::Vector3* nearest_point2);
+
+// Get collision point of two infinite lines, or return false if there is not a single such point
+inline bool linesCollisionPoint(Urho3D::Vector2& result,
+                                Urho3D::Vector2 const& begin1, Urho3D::Vector2 const& end1,
+                                Urho3D::Vector2 const& begin2, Urho3D::Vector2 const& end2);
 
 // Project vector to another, by using a shearing method.
 // This means vector "v" will never go smaller, but will
@@ -134,6 +142,11 @@ inline void getPitchAndYaw(float& result_pitch, float& result_yaw, Urho3D::Vecto
 	Urho3D::Vector2 v_xz(v.x_, v.z_);
 	result_pitch = getAngle(-v.y_,  v_xz.Length());
 	result_yaw = getAngle(v_xz);
+}
+
+inline float fixAngle(float angle)
+{
+    return Urho3D::Mod(angle + 180.0f, 360.0f) - 180.0f;
 }
 
 inline Urho3D::Vector3 getPerpendicular(Urho3D::Vector3 const& v)
@@ -258,6 +271,25 @@ inline float distanceBetweenLines(Urho3D::Vector3 const& begin1, Urho3D::Vector3
 	float cp_d1_d2_len = ::sqrt(cp_d1_d2_len_to_2);
 	Urho3D::Vector3 n = cp_d1_d2 / cp_d1_d2_len;
 	return ::fabs(n.DotProduct(begin_diff));
+}
+
+inline bool linesCollisionPoint(Urho3D::Vector2& result,
+                                Urho3D::Vector2 const& begin1, Urho3D::Vector2 const& end1,
+                                Urho3D::Vector2 const& begin2, Urho3D::Vector2 const& end2)
+{
+    float subdet_line1_x = begin1.x_ - end1.x_;
+    float subdet_line1_y = begin1.y_ - end1.y_;
+    float subdet_line2_x = begin2.x_ - end2.x_;
+    float subdet_line2_y = begin2.y_ - end2.y_;
+    float det_divider = subdet_line1_x * subdet_line2_y - subdet_line1_y * subdet_line2_x;
+    if (det_divider < Urho3D::M_LARGE_EPSILON) {
+        return false;
+    }
+    float subdet_line1 = begin1.x_ * end1.y_ - end1.x_ * begin1.y_;
+    float subdet_line2 = begin2.x_ * end2.y_ - end2.x_ * begin2.y_;
+    result.x_ = (subdet_line1 * subdet_line2_x - subdet_line2 * subdet_line1_x) / det_divider;
+    result.y_ = (subdet_line1 * subdet_line2_y - subdet_line2 * subdet_line1_y) / det_divider;
+    return true;
 }
 
 inline Urho3D::Vector3 shearVectorToAnother(Urho3D::Vector3 const& v, Urho3D::Vector3 const& another)
