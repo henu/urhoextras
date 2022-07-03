@@ -33,6 +33,16 @@ inline unsigned secureRand()
 	return result;
 }
 
+template<class T>
+inline Urho3D::String zfill(T val, unsigned length)
+{
+    Urho3D::String result(val);
+    while (result.Length() < length) {
+        result = "0" + result;
+    }
+    return result;
+}
+
 }
 
 #endif
