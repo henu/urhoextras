@@ -139,6 +139,22 @@ Urho3D::JSONValue getJsonObject(
     return json.Get(key);
 }
 
+Urho3D::JSONValue getJsonObjectIfExists(
+    Urho3D::JSONValue const& json,
+    Urho3D::String const& key,
+    Urho3D::String const& error_prefix,
+    Urho3D::JSONValue const& default_value
+)
+{
+    if (!json.IsObject()) {
+        throw JsonValidatorError(error_prefix + "Unable to get a member from non-object!");
+    }
+    if (!json.Contains(key)) {
+        return default_value;
+    }
+    return getJsonObject(json, key, error_prefix);
+}
+
 Urho3D::String getJsonString(
     Urho3D::JSONValue const& json,
     Urho3D::String const& key,

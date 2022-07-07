@@ -39,6 +39,12 @@ Urho3D::JSONValue getJsonObject(
     Urho3D::String const& key,
     Urho3D::String const& error_prefix = Urho3D::String::EMPTY
 );
+Urho3D::JSONValue getJsonObjectIfExists(
+    Urho3D::JSONValue const& json,
+    Urho3D::String const& key,
+    Urho3D::String const& error_prefix = Urho3D::String::EMPTY,
+    Urho3D::JSONValue const& default_value = Urho3D::JSONValue::emptyObject
+);
 Urho3D::String getJsonString(
     Urho3D::JSONValue const& json,
     Urho3D::String const& key,
