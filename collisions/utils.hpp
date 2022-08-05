@@ -3,6 +3,8 @@
 
 #include "collision.hpp"
 
+#include <Urho3D/Math/Plane.h>
+
 namespace UrhoExtras
 {
 
@@ -216,6 +218,21 @@ inline Urho3D::Vector3 moveOutFromCollisions(Collisions& colls)
 
     colls.Swap(float_colls);
     return result;
+}
+
+inline Urho3D::Vector3 projectVelocityAlongCollisionWalls(Urho3D::Vector3 velocity, Collisions const& colls, float multiplier_per_collision = 1)
+{
+    for (Collision const& coll : colls) {
+        // If velocity is not going towards the colliding wall, then ignore this wall
+        if (coll.getNormal().DotProduct(velocity) >= 0) {
+            continue;
+        }
+        // Project velocity to the collision plane
+        Urho3D::Plane collision_plane(coll.getNormal(), Urho3D::Vector3::ZERO);
+        velocity = collision_plane.Project(velocity) * multiplier_per_collision;
+    }
+
+    return velocity;
 }
 
 }
