@@ -146,6 +146,9 @@ inline void getPitchAndYaw(float& result_pitch, float& result_yaw, Urho3D::Vecto
 
 inline float fixAngle(float angle)
 {
+    if (angle < -180.0f) {
+        angle += 360 * Urho3D::CeilToInt(angle / -360.0f);
+    }
     return Urho3D::Mod(angle + 180.0f, 360.0f) - 180.0f;
 }
 
