@@ -33,6 +33,7 @@ public:
     Urho3D::IntVector2 getHeightmapSize() const;
     Urho3D::IntVector2 getTextureweightsSize() const;
     float getHeightmapSquareWidth() const;
+    float getTextureweightsSquareWidth() const;
     float getChunkWidth() const;
     unsigned getChunkHeightmapWidth() const;
     unsigned getChunkTextureweightsWidth() const;

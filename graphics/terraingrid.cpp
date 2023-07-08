@@ -86,6 +86,11 @@ float TerrainGrid::getHeightmapSquareWidth() const
     return heightmap_square_width;
 }
 
+float TerrainGrid::getTextureweightsSquareWidth() const
+{
+    return getChunkWidth() / textureweight_width;
+}
+
 float TerrainGrid::getChunkWidth() const
 {
     return (heightmap_width - 1) * heightmap_square_width;
