@@ -396,6 +396,52 @@ Urho3D::Vector2 getJsonVector2(
     return result;
 }
 
+Urho3D::Vector3 getJsonVector3(
+    Urho3D::JSONValue const& json,
+    Urho3D::String const& key,
+    Urho3D::String const& error_prefix,
+    Urho3D::Vector3 const& min_limit,
+    Urho3D::Vector3 const& max_limit
+)
+{
+    if (!json.IsObject()) {
+        throw JsonValidatorError(error_prefix + "Unable to get a member from non-object!");
+    }
+    if (!json.Contains(key)) {
+        throw JsonValidatorError(error_prefix + "Not found!");
+    }
+    if (!json.Get(key).IsArray()) {
+        throw JsonValidatorError(error_prefix + "Must be an array!");
+    }
+    Urho3D::JSONArray array = json.Get(key).GetArray();
+    if (array.Size() != 3) {
+        throw JsonValidatorError(error_prefix + "Must have exactly three numbers!");
+    }
+    if (!array[0].IsNumber() || !array[1].IsNumber() || !array[2].IsNumber()) {
+        throw JsonValidatorError(error_prefix + "Must have exactly three numbers!");
+    }
+    Urho3D::Vector3 result = Urho3D::Vector3(array[0].GetFloat(), array[1].GetFloat(), array[2].GetFloat());
+    if (result.x_ < min_limit.x_) {
+        throw JsonValidatorError(error_prefix + "Must have an X component " + Urho3D::String(min_limit.x_) + " or bigger!");
+    }
+    if (result.x_ > max_limit.x_) {
+        throw JsonValidatorError(error_prefix + "Must have an X component " + Urho3D::String(max_limit.x_) + " or smaller!");
+    }
+    if (result.y_ < min_limit.y_) {
+        throw JsonValidatorError(error_prefix + "Must have an Y component " + Urho3D::String(min_limit.y_) + " or bigger!");
+    }
+    if (result.y_ > max_limit.y_) {
+        throw JsonValidatorError(error_prefix + "Must have an Y component " + Urho3D::String(max_limit.y_) + " or smaller!");
+    }
+    if (result.z_ < min_limit.z_) {
+        throw JsonValidatorError(error_prefix + "Must have an Z component " + Urho3D::String(min_limit.z_) + " or bigger!");
+    }
+    if (result.z_ > max_limit.z_) {
+        throw JsonValidatorError(error_prefix + "Must have an Z component " + Urho3D::String(max_limit.z_) + " or smaller!");
+    }
+    return result;
+}
+
 Urho3D::Color getJsonColor(
     Urho3D::JSONValue const& json,
     Urho3D::String const& key,
