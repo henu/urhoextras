@@ -413,6 +413,111 @@ void TerrainGrid::buildFromBuffers()
     }
 }
 
+void TerrainGrid::drawTo(Urho3D::Vector3 const& pos, Urho3D::Image* terrain_mod, Urho3D::Image* height_mod, float height_mod_strength, Urho3D::Vector2 const& size, float angle)
+{
+    // Calculate relative position
+    Urho3D::Vector3 terrain_pos = GetNode()->GetWorldPosition();
+    Urho3D::Vector3 total_size = getSize();
+    Urho3D::Vector2 pos_rel((pos.x_ - terrain_pos.x_) / total_size.x_, (pos.z_ - terrain_pos.z_) / total_size.z_);
+
+    // Calculate relative bounds
+    float bounds_radius = size.Length() / 2;
+    Urho3D::Vector2 bounds_rel_min(pos_rel.x_ - bounds_radius / total_size.x_, pos_rel.y_ - bounds_radius / total_size.z_);
+    Urho3D::Vector2 bounds_rel_max(pos_rel.x_ + bounds_radius / total_size.x_, pos_rel.y_ + bounds_radius / total_size.z_);
+
+    if (terrain_mod) {
+        // Calculate position and bounds in textureweights
+        Urho3D::IntVector2 texmap_total_size = getTextureweightsSize();
+        Urho3D::Vector2 texmap_pos(pos_rel.x_ * texmap_total_size.x_, pos_rel.y_ * texmap_total_size.y_);
+        Urho3D::IntVector2 texmap_bounds_min(
+            Urho3D::Max(0, Urho3D::FloorToInt(bounds_rel_min.x_ * texmap_total_size.x_)),
+            Urho3D::Max(0, Urho3D::FloorToInt(bounds_rel_min.y_ * texmap_total_size.y_))
+        );
+        Urho3D::IntVector2 texmap_bounds_max(
+            Urho3D::Min(texmap_total_size.x_ - 1, Urho3D::CeilToInt(bounds_rel_max.x_ * texmap_total_size.x_)),
+            Urho3D::Min(texmap_total_size.y_ - 1, Urho3D::CeilToInt(bounds_rel_max.y_ * texmap_total_size.y_))
+        );
+        // Iterate pixels at the area
+        Urho3D::IntVector2 i;
+// TODO: What if size is not square?
+        float texmap_scale = terrain_mod->GetWidth() * total_size.x_ / texmap_total_size.x_ / size.x_;
+        for (i.x_ = texmap_bounds_min.x_; i.x_ <= texmap_bounds_max.x_; ++ i.x_) {
+            float x_rel = i.x_ - texmap_pos.x_;
+            for (i.y_ = texmap_bounds_min.y_; i.y_ <= texmap_bounds_max.y_; ++ i.y_) {
+                // Convert from texture space to image space
+                float z_rel = i.y_ - texmap_pos.y_;
+                float x_rel2 = x_rel * Urho3D::Cos(angle) - z_rel * Urho3D::Sin(angle);
+                float z_rel2 = z_rel * Urho3D::Cos(angle) + x_rel * Urho3D::Sin(angle);
+                float i_pos_x = x_rel2 * texmap_scale;
+                float i_pos_z = z_rel2 * texmap_scale;
+                i_pos_x += terrain_mod->GetWidth() / 2;
+                i_pos_z += terrain_mod->GetHeight() / 2;
+                int i_pos_x_i = Urho3D::RoundToInt(i_pos_x);
+                int i_pos_z_i = Urho3D::RoundToInt(i_pos_z);
+                if (i_pos_x_i < 0 || i_pos_x_i >= terrain_mod->GetWidth() || i_pos_z_i < 0 || i_pos_z_i >= terrain_mod->GetHeight()) {
+                    continue;
+                }
+                Urho3D::Color color = terrain_mod->GetPixel(i_pos_x_i, terrain_mod->GetHeight() - i_pos_z_i - 1);
+                unsigned offset = (i.x_ + i.y_ * texmap_total_size.x_) * 3;
+                Urho3D::Vector3 final_color(
+                    textureweights[offset] / 255.0 * (1 - color.a_) + color.r_ * color.a_,
+                    textureweights[offset + 1] / 255.0 * (1 - color.a_) + color.g_ * color.a_,
+                    textureweights[offset + 2] / 255.0 * (1 - color.a_) + color.b_ * color.a_
+                );
+                final_color.Normalize();
+                textureweights[offset] = Urho3D::Clamp(Urho3D::RoundToInt(final_color.x_ * 255), 0, 255);
+                textureweights[offset + 1] = Urho3D::Clamp(Urho3D::RoundToInt(final_color.y_ * 255), 0, 255);
+                textureweights[offset + 2] = Urho3D::Clamp(Urho3D::RoundToInt(final_color.z_ * 255), 0, 255);
+            }
+        }
+    }
+
+    if (height_mod) {
+        // Calculate position and bounds in textureweights
+        Urho3D::IntVector2 hmap_total_size = getHeightmapSize();
+        Urho3D::Vector2 hmap_pos(pos_rel.x_ * hmap_total_size.x_, pos_rel.y_ * hmap_total_size.y_);
+        Urho3D::IntVector2 hmap_bounds_min(
+            Urho3D::Max(0, Urho3D::FloorToInt(bounds_rel_min.x_ * hmap_total_size.x_)),
+            Urho3D::Max(0, Urho3D::FloorToInt(bounds_rel_min.y_ * hmap_total_size.y_))
+        );
+        Urho3D::IntVector2 hmap_bounds_max(
+            Urho3D::Min(hmap_total_size.x_ - 1, Urho3D::CeilToInt(bounds_rel_max.x_ * hmap_total_size.x_)),
+            Urho3D::Min(hmap_total_size.y_ - 1, Urho3D::CeilToInt(bounds_rel_max.y_ * hmap_total_size.y_))
+        );
+        // Iterate pixels at the area
+        Urho3D::IntVector2 i;
+// TODO: What if size is not square?
+        float hmap_scale = height_mod->GetWidth() * total_size.x_ / hmap_total_size.x_ / size.x_;
+        for (i.x_ = hmap_bounds_min.x_; i.x_ <= hmap_bounds_max.x_; ++ i.x_) {
+            float x_rel = i.x_ - hmap_pos.x_;
+            for (i.y_ = hmap_bounds_min.y_; i.y_ <= hmap_bounds_max.y_; ++ i.y_) {
+                // Convert from height space to image space
+                float z_rel = i.y_ - hmap_pos.y_;
+                float x_rel2 = x_rel * Urho3D::Cos(angle) - z_rel * Urho3D::Sin(angle);
+                float z_rel2 = z_rel * Urho3D::Cos(angle) + x_rel * Urho3D::Sin(angle);
+                float i_pos_x = x_rel2 * hmap_scale;
+                float i_pos_z = z_rel2 * hmap_scale;
+                i_pos_x += height_mod->GetWidth() / 2;
+                i_pos_z += height_mod->GetHeight() / 2;
+                int i_pos_x_i = Urho3D::RoundToInt(i_pos_x);
+                int i_pos_z_i = Urho3D::RoundToInt(i_pos_z);
+                if (i_pos_x_i < 0 || i_pos_x_i >= height_mod->GetWidth() || i_pos_z_i < 0 || i_pos_z_i >= height_mod->GetHeight()) {
+                    continue;
+                }
+                Urho3D::Color color = height_mod->GetPixel(i_pos_x_i, height_mod->GetHeight() - i_pos_z_i - 1);
+                float height_increase = (color.Average() - 0.5) * 2 * height_mod_strength;
+                int height_increase_i = 65535.0 * height_increase / total_size.z_;
+                unsigned offset = i.x_ + i.y_ * hmap_total_size.x_;
+                heightmap[offset] = Urho3D::Clamp(int(heightmap[offset]) + height_increase_i, 0, 0xffff);
+            }
+        }
+    }
+
+    MarkNetworkUpdate();
+
+    buildFromBuffers();
+}
+
 void TerrainGrid::registerObject(Urho3D::Context* context)
 {
     context->RegisterFactory<TerrainGrid>();
