@@ -43,6 +43,20 @@ inline Urho3D::String zfill(T val, unsigned length)
     return result;
 }
 
+inline unsigned countOccurences(Urho3D::String const& str, Urho3D::String const& substr)
+{
+    unsigned result = 0;
+    for (unsigned offset = 0; offset < str.Length(); ) {
+        auto find = str.Find(substr, offset);
+        if (find == Urho3D::String::NPOS) {
+            break;
+        }
+        ++ result;
+        offset = find + substr.Length();
+    }
+    return result;
+}
+
 }
 
 #endif
