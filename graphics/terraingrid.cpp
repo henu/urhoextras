@@ -435,7 +435,7 @@ void TerrainGrid::buildFromBuffers()
     }
 }
 
-void TerrainGrid::drawTo(Urho3D::Vector3 const& pos, Urho3D::Image* terrain_mod, Urho3D::Image* height_mod, float height_mod_strength, Urho3D::Vector2 const& size, float angle)
+void TerrainGrid::drawTo(Urho3D::Vector3 const& pos, Urho3D::Image* terrain_mod, Urho3D::Image* height_mod, float height_mod_strength, Urho3D::Vector2 const& size, float angle, bool update_over_network)
 {
     // Calculate relative position
     Urho3D::Vector3 terrain_pos = GetNode()->GetWorldPosition();
@@ -548,7 +548,9 @@ void TerrainGrid::drawTo(Urho3D::Vector3 const& pos, Urho3D::Image* terrain_mod,
         }
     }
 
-    MarkNetworkUpdate();
+    if (update_over_network) {
+        MarkNetworkUpdate();
+    }
 
     buildFromBuffers();
 }
