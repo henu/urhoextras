@@ -121,6 +121,7 @@ void TerrainGrid::generateFlatland(Urho3D::IntVector2 const& grid_size)
         textureweights[i] = 1;
     }
 
+    chunks_not_dirty.Clear();
     buildFromBuffers();
 }
 
@@ -182,6 +183,7 @@ void TerrainGrid::generateFromImages(Urho3D::Image* terrainweight, Urho3D::Image
         }
     }
 
+    chunks_not_dirty.Clear();
     buildFromBuffers();
 }
 
@@ -202,6 +204,7 @@ void TerrainGrid::generateFromVectors(Urho3D::IntVector2 const& grid_size, Heigh
     this->heightmap = heightmap;
     this->textureweights = textureweights;
 
+    chunks_not_dirty.Clear();
     buildFromBuffers();
 }
 
@@ -316,11 +319,20 @@ void TerrainGrid::buildFromBuffers()
 
     Urho3D::Node* node = GetNode();
 
+    chunks.Resize(grid_size.x_ * grid_size.y_, nullptr);
+
     // Clear possible old stuff
-    for (Urho3D::Terrain* chunk : chunks) {
-        chunk->GetNode()->Remove();
+    Urho3D::IntVector2 i;
+    unsigned offset = 0;
+    for (i.y_ = 0; i.y_ < grid_size.y_; ++ i.y_) {
+        for (i.x_ = 0; i.x_ < grid_size.x_; ++ i.x_) {
+            if (chunks[offset] && !chunks_not_dirty.Contains(i)) {
+                chunks[offset]->GetNode()->Remove();
+                chunks[offset] = nullptr;
+            }
+            ++ offset;
+        }
     }
-    chunks.Clear();
 
     Urho3D::SharedPtr<Urho3D::Material> original_mat(new Urho3D::Material(context_));
     original_mat->SetNumTechniques(1);
@@ -331,8 +343,15 @@ void TerrainGrid::buildFromBuffers()
     }
 
     // Create Terrain objects
+    offset = 0;
     for (int y = 0; y < grid_size.y_; ++ y) {
         for (int x = 0; x < grid_size.x_; ++ x) {
+            // If there is already a chunk, it doesn't need to be recreated
+            if (chunks[offset]) {
+                ++ offset;
+                continue;
+            }
+
             // Node
             Urho3D::Node* chunk_node = node->CreateChild(Urho3D::String::EMPTY, Urho3D::LOCAL);
             chunk_node->SetPosition(Urho3D::Vector3(
@@ -389,7 +408,10 @@ void TerrainGrid::buildFromBuffers()
             chunk_terrain->SetMaterial(chunk_mat);
             chunk_terrain->SetViewMask(viewmask);
 
-            chunks.Push(chunk_terrain);
+            chunks_not_dirty.Insert(Urho3D::IntVector2(x, y));
+
+            chunks[offset] = chunk_terrain;
+            ++ offset;
         }
     }
 
@@ -457,6 +479,7 @@ void TerrainGrid::drawTo(Urho3D::Vector3 const& pos, Urho3D::Image* terrain_mod,
                 if (i_pos_x_i < 0 || i_pos_x_i >= terrain_mod->GetWidth() || i_pos_z_i < 0 || i_pos_z_i >= terrain_mod->GetHeight()) {
                     continue;
                 }
+                // Do the modification
                 Urho3D::Color color = terrain_mod->GetPixel(i_pos_x_i, terrain_mod->GetHeight() - i_pos_z_i - 1);
                 unsigned offset = (i.x_ + i.y_ * texmap_total_size.x_) * 3;
                 Urho3D::Vector3 final_color(
@@ -504,12 +527,24 @@ void TerrainGrid::drawTo(Urho3D::Vector3 const& pos, Urho3D::Image* terrain_mod,
                 if (i_pos_x_i < 0 || i_pos_x_i >= height_mod->GetWidth() || i_pos_z_i < 0 || i_pos_z_i >= height_mod->GetHeight()) {
                     continue;
                 }
+                // Do the modification
                 Urho3D::Color color = height_mod->GetPixel(i_pos_x_i, height_mod->GetHeight() - i_pos_z_i - 1);
                 float height_increase = (color.Average() - 0.5) * 2 * height_mod_strength;
                 int height_increase_i = 65535.0 * height_increase / total_size.z_;
                 unsigned offset = i.x_ + i.y_ * hmap_total_size.x_;
                 heightmap[offset] = Urho3D::Clamp(int(heightmap[offset]) + height_increase_i, 0, 0xffff);
             }
+        }
+    }
+
+    // Mark chunks dirty
+// TODO: Would it be a good idea to more accurate here? Now some chunks are marked dirty even if no changes happen on them.
+    Urho3D::IntVector2 chunks_bounds_min(Urho3D::FloorToInt(bounds_rel_min.x_ * grid_size.x_), Urho3D::FloorToInt(bounds_rel_min.y_ * grid_size.y_));
+    Urho3D::IntVector2 chunks_bounds_max(Urho3D::CeilToInt(bounds_rel_max.x_ * grid_size.x_), Urho3D::CeilToInt(bounds_rel_max.y_ * grid_size.y_));
+    Urho3D::IntVector2 i;
+    for (i.x_ = chunks_bounds_min.x_; i.x_ <= chunks_bounds_min.x_; ++ i.x_) {
+        for (i.y_ = chunks_bounds_min.y_; i.y_ <= chunks_bounds_min.y_; ++ i.y_) {
+            chunks_not_dirty.Erase(i);
         }
     }
 
@@ -600,9 +635,35 @@ void TerrainGrid::setHeightmapAttr(Urho3D::PODVector<unsigned char> const& value
         throw std::runtime_error("Unable to decompress TerrainGrid.heightmap for attribute deserialization!");
     }
     heightmap_vbuf.Seek(0);
-    heightmap.Clear();
+    HeightData old_heightmap;
+    heightmap.Swap(old_heightmap);
     while (!heightmap_vbuf.IsEof()) {
         heightmap.Push(heightmap_vbuf.ReadUShort());
+    }
+    // Compare new and old heightdata to find out which chunks have changed
+    if (old_heightmap.Empty()) {
+        chunks_not_dirty.Clear();
+    } else {
+        Urho3D::IntVector2 chunk_pos;
+        for (chunk_pos.y_ = 0; chunk_pos.y_ < grid_size.y_; ++ chunk_pos.y_) {
+            for (chunk_pos.x_ = 0; chunk_pos.x_ < grid_size.x_; ++ chunk_pos.x_) {
+                if (chunks_not_dirty.Contains(chunk_pos)) {
+                    unsigned offset_begin = chunk_pos.x_ * (heightmap_width - 1) + chunk_pos.y_ * (heightmap_width - 1) * (grid_size.x_ * (heightmap_width - 1) + 1);
+                    bool removed = false;
+                    for (unsigned z = 0; z < heightmap_width && !removed; ++ z) {
+                        unsigned offset = offset_begin + z * (grid_size.x_ * (heightmap_width - 1) + 1);
+                        for (unsigned x = 0; x < heightmap_width; ++ x) {
+                            if (heightmap[offset] != old_heightmap[offset]) {
+                                chunks_not_dirty.Erase(chunk_pos);
+                                removed = true;
+                                break;
+                            }
+                            ++ offset;
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -623,11 +684,37 @@ void TerrainGrid::setTextureweightsAttr(Urho3D::PODVector<unsigned char> const& 
     if (!Urho3D::DecompressStream(textureweights_vbuf, textureweights_compressed_buf)) {
         throw std::runtime_error("Unable to decompress TerrainGrid.textureweights for attribute deserialization!");
     }
-    textureweights.Clear();
+    WeightData old_textureweights;
+    textureweights.Swap(old_textureweights);
 // TODO: Make some kind of fast memory copy!
     textureweights_vbuf.Seek(0);
     while (!textureweights_vbuf.IsEof()) {
         textureweights.Push(textureweights_vbuf.ReadUByte());
+    }
+    // Compare new and old heightdata to find out which chunks have changed
+    if (old_textureweights.Empty()) {
+        chunks_not_dirty.Clear();
+    } else {
+        Urho3D::IntVector2 chunk_pos;
+        for (chunk_pos.y_ = 0; chunk_pos.y_ < grid_size.y_; ++ chunk_pos.y_) {
+            for (chunk_pos.x_ = 0; chunk_pos.x_ < grid_size.x_; ++ chunk_pos.x_) {
+                if (chunks_not_dirty.Contains(chunk_pos)) {
+                    unsigned offset_begin = (chunk_pos.x_ * textureweight_width + chunk_pos.y_ * textureweight_width * grid_size.x_ * textureweight_width) * 3;
+                    bool removed = false;
+                    for (unsigned z = 0; z < textureweight_width && !removed; ++ z) {
+                        unsigned offset = offset_begin + z * grid_size.x_ * textureweight_width * 3;
+                        for (unsigned x = 0; x < textureweight_width * 3; ++ x) {
+                            if (textureweights[offset] != old_textureweights[offset]) {
+                                chunks_not_dirty.Erase(chunk_pos);
+                                removed = true;
+                                break;
+                            }
+                            ++ offset;
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

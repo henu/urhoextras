@@ -64,6 +64,7 @@ private:
 
     typedef Urho3D::Vector<Urho3D::SharedPtr<Urho3D::Texture> > Textures;
     typedef Urho3D::Vector<Urho3D::SharedPtr<Urho3D::Image> > TextureImages;
+    typedef Urho3D::HashSet<Urho3D::IntVector2> IVec2Set;
 
     typedef Urho3D::PODVector<Urho3D::Terrain*> Chunks;
 
@@ -86,6 +87,7 @@ private:
     unsigned viewmask;
 
     Chunks chunks;
+    IVec2Set chunks_not_dirty;
 
     Urho3D::Terrain* getChunkAt(float x, float z) const;
 
