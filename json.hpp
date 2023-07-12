@@ -127,6 +127,13 @@ Urho3D::Vector3 getJsonVector3(
     Urho3D::Vector3 const& min_limit = Urho3D::Vector3(-Urho3D::M_INFINITY, -Urho3D::M_INFINITY, -Urho3D::M_INFINITY),
     Urho3D::Vector3 const& max_limit = Urho3D::Vector3(Urho3D::M_INFINITY, Urho3D::M_INFINITY, Urho3D::M_INFINITY)
 );
+Urho3D::Vector4 getJsonVector4(
+    Urho3D::JSONValue const& json,
+    Urho3D::String const& key,
+    Urho3D::String const& error_prefix = Urho3D::String::EMPTY,
+    Urho3D::Vector4 const& min_limit = Urho3D::Vector4(-Urho3D::M_INFINITY, -Urho3D::M_INFINITY, -Urho3D::M_INFINITY, -Urho3D::M_INFINITY),
+    Urho3D::Vector4 const& max_limit = Urho3D::Vector4(Urho3D::M_INFINITY, Urho3D::M_INFINITY, Urho3D::M_INFINITY, Urho3D::M_INFINITY)
+);
 Urho3D::Color getJsonColor(
     Urho3D::JSONValue const& json,
     Urho3D::String const& key,
