@@ -22,6 +22,8 @@ public:
 
     void setAnimation(ParticleAnimation* anim);
 
+    void setAnimationSpeed(float speed);
+
     void setAutoRemoveMode(Urho3D::AutoRemoveMode mode);
 
     static void registerObject(Urho3D::Context* context);
@@ -41,6 +43,8 @@ private:
     // Animation state
     float anim_time;
     ParticleFrames ps_frames;
+
+    float anim_speed;
 
     Urho3D::AutoRemoveMode auto_remove;
 

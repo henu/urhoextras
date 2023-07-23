@@ -13,6 +13,7 @@ namespace Graphics
 ParticlePlayer::ParticlePlayer(Urho3D::Context* context) :
     Urho3D::BillboardSet(context),
     anim_time(0),
+    anim_speed(1),
     auto_remove(Urho3D::REMOVE_DISABLED)
 {
 }
@@ -26,6 +27,11 @@ void ParticlePlayer::setAnimation(ParticleAnimation* anim)
     SetNumBillboards(anim->getParticlesSize());
     update(0);
     SetMaterial(anim->getMaterial());
+}
+
+void ParticlePlayer::setAnimationSpeed(float speed)
+{
+    anim_speed = speed;
 }
 
 void ParticlePlayer::setAutoRemoveMode(Urho3D::AutoRemoveMode mode)
@@ -66,7 +72,7 @@ void ParticlePlayer::OnSceneSet(Urho3D::Scene* scene)
 
 bool ParticlePlayer::update(float deltatime)
 {
-    anim_time += deltatime;
+    anim_time += deltatime * anim_speed;
 
     // Iterate all particles
     bool all_finished = true;
