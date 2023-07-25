@@ -19,48 +19,15 @@ ParticleAnimation::ParticleAnimation(Urho3D::Context* context) :
 
 bool ParticleAnimation::BeginLoad(Urho3D::Deserializer& source)
 {
-    Urho3D::JSONFile json_file(context_);
-    if (!json_file.Load(source)) {
-        URHO3D_LOGERROR("Unable to load Wallmaterial, because JSON file contains errors!");
-        return false;
+    // Check if in binary format
+    char header_check[5];
+    source.Read(header_check, 5);
+    source.Seek(0);
+    if (strncmp(header_check, "PANIM", 5) == 0) {
+        return loadBinaryFile(source);
     }
-    Urho3D::JSONValue json = json_file.GetRoot();
-
-    // Material
-    mat_name = getJsonString(json, "material", "ParticleAnimation material: ");
-    Urho3D::ResourceCache* resources = GetSubsystem<Urho3D::ResourceCache>();
-    resources->BackgroundLoadResource<Urho3D::Material>(mat_name);
-
-    // Particles
-    Urho3D::JSONArray particles_json = getJsonArray(json, "particles", "ParticleAnimation particles: ", 1);
-    for (Urho3D::JSONValue const& particle_json : particles_json) {
-        if (!particle_json.IsArray()) {
-            URHO3D_LOGERROR("ParticleAnimation particle definion must be an array of frames!");
-            return false;
-        }
-        Urho3D::JSONArray const& particle_array = particle_json.GetArray();
-        if (particle_array.Size() >= 2) {
-            // Read frames of single particle
-            ParticleFrames frames;
-            for (Urho3D::JSONValue const& frame_json : particle_array) {
-                // Read single frame
-                ParticleFrame frame;
-                frame.bb_props.pos = getJsonVector3(frame_json, "pos", "ParticleAnimation particle frame pos: ");
-                frame.bb_props.size = getJsonVector2(frame_json, "size", "ParticleAnimation particle frame size: ");
-                frame.bb_props.uv = Urho3D::Rect(getJsonVector4(frame_json, "uv", "ParticleAnimation particle frame uv: "));
-                frame.bb_props.color = getJsonColor(frame_json, "color", "ParticleAnimation particle frame color: ");
-                frame.bb_props.rot = getJsonFloat(frame_json, "rot", "ParticleAnimation particle frame rot: ");
-                frame.time = getJsonFloat(frame_json, "time", "ParticleAnimation particle frame time: ");
-                frames.Push(frame);
-            }
-            // Sort frames, based on their time
-            Urho3D::Sort(frames.Begin(), frames.End());
-
-            ps.Push(frames);
-        }
-    }
-
-    return true;
+    // It is in JSON format
+    return loadJsonFile(source);
 }
 
 bool ParticleAnimation::EndLoad()
@@ -157,6 +124,86 @@ void ParticleAnimation::getParticleBillboardProperties(BillboardProperties& resu
 void ParticleAnimation::registerObject(Urho3D::Context* context)
 {
     context->RegisterFactory<ParticleAnimation>();
+}
+
+bool ParticleAnimation::loadBinaryFile(Urho3D::Deserializer& source)
+{
+    // Skip header
+    source.Seek(5);
+
+    // Material name
+    mat_name = source.ReadString();
+
+    // Particles
+    unsigned particles_size = source.ReadUInt();
+    while (ps.Size() < particles_size) {
+        // Frames
+        unsigned frames_size = source.ReadUInt();
+        ParticleFrames frames;
+        while (frames.Size() < frames_size) {
+            ParticleFrame frame;
+            frame.bb_props.pos = source.ReadVector3();
+            frame.bb_props.size = source.ReadVector2();
+            frame.bb_props.uv = source.ReadRect();
+            frame.bb_props.color = source.ReadColor();
+            frame.bb_props.rot = source.ReadFloat();
+            frame.time = source.ReadFloat();
+            frames.Push(frame);
+        }
+
+        // Sort frames, based on their time
+        Urho3D::Sort(frames.Begin(), frames.End());
+
+        ps.Push(frames);
+    }
+
+    return true;
+}
+
+bool ParticleAnimation::loadJsonFile(Urho3D::Deserializer& source)
+{
+    Urho3D::JSONFile json_file(context_);
+    if (!json_file.Load(source)) {
+        URHO3D_LOGERROR("Unable to load Wallmaterial, because JSON file contains errors!");
+        return false;
+    }
+    Urho3D::JSONValue json = json_file.GetRoot();
+
+    // Material
+    mat_name = getJsonString(json, "material", "ParticleAnimation material: ");
+    Urho3D::ResourceCache* resources = GetSubsystem<Urho3D::ResourceCache>();
+    resources->BackgroundLoadResource<Urho3D::Material>(mat_name);
+
+    // Particles
+    Urho3D::JSONArray particles_json = getJsonArray(json, "particles", "ParticleAnimation particles: ", 1);
+    for (Urho3D::JSONValue const& particle_json : particles_json) {
+        if (!particle_json.IsArray()) {
+            URHO3D_LOGERROR("ParticleAnimation particle definion must be an array of frames!");
+            return false;
+        }
+        Urho3D::JSONArray const& particle_array = particle_json.GetArray();
+        if (particle_array.Size() >= 2) {
+            // Read frames of single particle
+            ParticleFrames frames;
+            for (Urho3D::JSONValue const& frame_json : particle_array) {
+                // Read single frame
+                ParticleFrame frame;
+                frame.bb_props.pos = getJsonVector3(frame_json, "pos", "ParticleAnimation particle frame pos: ");
+                frame.bb_props.size = getJsonVector2(frame_json, "size", "ParticleAnimation particle frame size: ");
+                frame.bb_props.uv = Urho3D::Rect(getJsonVector4(frame_json, "uv", "ParticleAnimation particle frame uv: "));
+                frame.bb_props.color = getJsonColor(frame_json, "color", "ParticleAnimation particle frame color: ");
+                frame.bb_props.rot = getJsonFloat(frame_json, "rot", "ParticleAnimation particle frame rot: ");
+                frame.time = getJsonFloat(frame_json, "time", "ParticleAnimation particle frame time: ");
+                frames.Push(frame);
+            }
+            // Sort frames, based on their time
+            Urho3D::Sort(frames.Begin(), frames.End());
+
+            ps.Push(frames);
+        }
+    }
+
+    return true;
 }
 
 }

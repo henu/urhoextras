@@ -70,6 +70,10 @@ private:
     Urho3D::SharedPtr<Urho3D::Material> mat;
 
     Particles ps;
+
+    bool loadBinaryFile(Urho3D::Deserializer& source);
+
+    bool loadJsonFile(Urho3D::Deserializer& source);
 };
 
 }
