@@ -542,8 +542,8 @@ void TerrainGrid::drawTo(Urho3D::Vector3 const& pos, Urho3D::Image* terrain_mod,
     Urho3D::IntVector2 chunks_bounds_min(Urho3D::FloorToInt(bounds_rel_min.x_ * grid_size.x_), Urho3D::FloorToInt(bounds_rel_min.y_ * grid_size.y_));
     Urho3D::IntVector2 chunks_bounds_max(Urho3D::CeilToInt(bounds_rel_max.x_ * grid_size.x_), Urho3D::CeilToInt(bounds_rel_max.y_ * grid_size.y_));
     Urho3D::IntVector2 i;
-    for (i.x_ = chunks_bounds_min.x_; i.x_ <= chunks_bounds_min.x_; ++ i.x_) {
-        for (i.y_ = chunks_bounds_min.y_; i.y_ <= chunks_bounds_min.y_; ++ i.y_) {
+    for (i.x_ = chunks_bounds_min.x_; i.x_ <= chunks_bounds_max.x_; ++ i.x_) {
+        for (i.y_ = chunks_bounds_min.y_; i.y_ <= chunks_bounds_max.y_; ++ i.y_) {
             chunks_not_dirty.Erase(i);
         }
     }
